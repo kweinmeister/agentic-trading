@@ -1,4 +1,5 @@
 import random
+
 from simulator.market import MarketDataSimulator
 
 
@@ -93,7 +94,9 @@ def test_market_data_simulator_deterministic_behavior(monkeypatch):
     """Test that simulator behaves deterministically with fixed random seed."""
     # Fix the random seed
     monkeypatch.setattr(
-        random, "normalvariate", lambda mu, sigma: mu
+        random,
+        "normalvariate",
+        lambda mu, sigma: mu,
     )  # Always return the mean
 
     simulator1 = MarketDataSimulator(initial_price=100.0, volatility=0.02, trend=0.0005)
@@ -163,7 +166,8 @@ def test_market_data_simulator_large_history():
     """Test MarketDataSimulator with large history size."""
     large_history_size = 10000
     simulator = MarketDataSimulator(
-        initial_price=100.0, history_size=large_history_size
+        initial_price=100.0,
+        history_size=large_history_size,
     )
 
     # Generate many prices

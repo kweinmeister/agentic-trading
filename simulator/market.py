@@ -15,14 +15,14 @@ class MarketDataSimulator:
         trend: float = 0.0005,
         history_size: int = 60,
     ):
-        """
-        Initializes the market data simulator.
+        """Initializes the market data simulator.
 
         Args:
             initial_price: The starting price for the simulation.
             volatility: The standard deviation of the daily price change percentage.
             trend: The average daily price change percentage (drift).
             history_size: The maximum number of historical prices to store.
+
         """
         self.current_price: float = initial_price
         self.volatility: float = volatility
@@ -36,7 +36,8 @@ class MarketDataSimulator:
         change_pct = random.normalvariate(self.trend, self.volatility)
         self.current_price *= 1 + change_pct
         self.current_price = max(
-            1.0, self.current_price
+            1.0,
+            self.current_price,
         )  # Ensure price doesn't go below 1.0
         self.history.append(self.current_price)
 

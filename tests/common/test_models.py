@@ -3,6 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
+from common.config import DEFAULT_RISKGUARD_MAX_POS_SIZE
 from common.models import (
     AlphaBotTaskPayload,
     PortfolioState,
@@ -11,18 +12,21 @@ from common.models import (
     TradeProposal,
     TradeStatus,
 )
-from common.config import DEFAULT_RISKGUARD_MAX_POS_SIZE
 
 
 def test_risk_check_payload_valid():
     """Tests that a valid RiskCheckPayload can be created."""
     trade_proposal = TradeProposal(
-        action="BUY", ticker="TECH", quantity=100, price=150.0
+        action="BUY",
+        ticker="TECH",
+        quantity=100,
+        price=150.0,
     )
     portfolio_state = PortfolioState(cash=50000.0, shares=200, total_value=80000.0)
 
     payload = RiskCheckPayload(
-        trade_proposal=trade_proposal, portfolio_state=portfolio_state
+        trade_proposal=trade_proposal,
+        portfolio_state=portfolio_state,
     )
 
     assert payload.max_pos_size == DEFAULT_RISKGUARD_MAX_POS_SIZE
@@ -41,8 +45,11 @@ def test_risk_check_payload_missing_required_field():
     with pytest.raises(ValidationError) as exc_info:
         RiskCheckPayload(  # type: ignore
             trade_proposal=TradeProposal(
-                action="SELL", ticker="TECH", quantity=50, price=155.0
-            )
+                action="SELL",
+                ticker="TECH",
+                quantity=50,
+                price=155.0,
+            ),
         )
 
     assert "portfolio_state" in str(exc_info.value)

@@ -2,7 +2,8 @@ from typing import Callable
 
 import pytest
 from a2a.server.agent_execution import RequestContext
-from a2a.types import DataPart, Message, Part, Role, MessageSendParams
+from a2a.types import DataPart, Message, MessageSendParams, Part, Role
+
 from riskguard.agent_executor import RiskGuardAgentExecutor
 
 
@@ -34,7 +35,8 @@ async def test_execute_success_approved(
 
     # Arrange
     request_message = riskguard_message_factory(
-        trade_proposal={"quantity": 10}, portfolio_state={"cash": 50000}
+        trade_proposal={"quantity": 10},
+        portfolio_state={"cash": 50000},
     )
     mock_runner_instance.run_async.return_value = adk_mock_riskguard_generator(
         result_name="risk_check_result",
@@ -69,7 +71,9 @@ async def test_execute_success_approved(
 
 @pytest.mark.asyncio
 async def test_execute_missing_trade_proposal(
-    mock_runner_factory, adk_mock_riskguard_generator, event_queue
+    mock_runner_factory,
+    adk_mock_riskguard_generator,
+    event_queue,
 ):
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
@@ -85,10 +89,10 @@ async def test_execute_missing_trade_proposal(
                             "cash": 10000.0,
                             "shares": 100,
                             "total_value": 20000.0,
-                        }
-                    }
-                )
-            )
+                        },
+                    },
+                ),
+            ),
         ],
     )
 
@@ -160,10 +164,11 @@ async def test_execute_adk_runner_exception(
 
 @pytest.mark.asyncio
 async def test_execute_handles_adk_runner_exception(
-    riskguard_message_factory, mock_runner_factory, event_queue
+    riskguard_message_factory,
+    mock_runner_factory,
+    event_queue,
 ):
-    """
-    Tests that if the ADK runner fails, the executor enqueues an error message
+    """Tests that if the ADK runner fails, the executor enqueues an error message
     and closes the queue.
     """
     # Arrange

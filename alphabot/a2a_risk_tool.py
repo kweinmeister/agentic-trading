@@ -16,6 +16,11 @@ from a2a.types import (
     Message,
     Role,
 )
+from google.adk.events import Event
+from google.adk.tools import BaseTool, ToolContext
+from google.genai import types as genai_types  # ADK uses google.genai.types
+from pydantic import ValidationError
+
 from common.config import (
     DEFAULT_RISKGUARD_MAX_CONCENTRATION,
     DEFAULT_RISKGUARD_MAX_POS_SIZE,
@@ -28,10 +33,6 @@ from common.models import (
     TradeProposal,
 )
 from common.utils.agent_utils import create_a2a_request_from_payload
-from google.adk.events import Event
-from google.adk.tools import BaseTool, ToolContext
-from google.genai import types as genai_types  # ADK uses google.genai.types
-from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,7 @@ RISKGUARD_A2A_TIMEOUT_SECONDS = 10
 
 
 class A2ARiskCheckTool(BaseTool):
-    """
-    ADK Tool that makes an A2A call to the RiskGuard service.
-    """
+    """ADK Tool that makes an A2A call to the RiskGuard service."""
 
     name: str = "a2a_risk_check"
     description: str = "Sends a trade proposal to the RiskGuard service for validation and returns the approval status and reason."
@@ -52,10 +51,12 @@ class A2ARiskCheckTool(BaseTool):
         # Pop custom arguments for this class before calling super()
         # Configure httpx.AsyncClient with the timeout
         self._httpx_client = kwargs.pop(
-            "httpx_client", httpx.AsyncClient(timeout=RISKGUARD_A2A_TIMEOUT_SECONDS)
+            "httpx_client",
+            httpx.AsyncClient(timeout=RISKGUARD_A2A_TIMEOUT_SECONDS),
         )
         risk_guard_service_url = os.environ.get(
-            "RISKGUARD_SERVICE_URL", DEFAULT_RISKGUARD_URL
+            "RISKGUARD_SERVICE_URL",
+            DEFAULT_RISKGUARD_URL,
         )
         self.risk_guard_url = kwargs.pop("risk_guard_url", risk_guard_service_url)
 
@@ -69,8 +70,7 @@ class A2ARiskCheckTool(BaseTool):
             logger.info("A2ARiskCheckTool httpx.AsyncClient closed.")
 
     def _get_declaration(self) -> genai_types.FunctionDeclaration:
-        """
-        Returns the ADK FunctionDeclaration for this tool.
+        """Returns the ADK FunctionDeclaration for this tool.
         This describes the tool's interface to an LLM if it were to be called by one.
         """
         return genai_types.FunctionDeclaration(
@@ -84,7 +84,8 @@ class A2ARiskCheckTool(BaseTool):
                         description="Details of the trade being proposed, e.g., {'action': 'BUY', 'ticker': 'XYZ', 'quantity': 100, 'price': 50.0}",
                         properties={
                             "action": genai_types.Schema(
-                                type=genai_types.Type.STRING, description="BUY or SELL"
+                                type=genai_types.Type.STRING,
+                                description="BUY or SELL",
                             ),
                             "ticker": genai_types.Schema(
                                 type=genai_types.Type.STRING,
@@ -153,7 +154,7 @@ class A2ARiskCheckTool(BaseTool):
         args: Dict[str, Any] = kwargs["args"]
         invocation_id_short = tool_context.invocation_id[:8]
         logger.debug(
-            f"[{self.name} Tool ({invocation_id_short})] Received args: {args}"
+            f"[{self.name} Tool ({invocation_id_short})] Received args: {args}",
         )
 
         trade_proposal = args.get("trade_proposal")
@@ -162,18 +163,21 @@ class A2ARiskCheckTool(BaseTool):
 
         # Use risk_params from args if provided, otherwise fallback to AlphaBot's defaults
         risk_guard_target_url = risk_params_from_args.get(
-            "riskguard_url", self.risk_guard_url
+            "riskguard_url",
+            self.risk_guard_url,
         )
         max_pos_size = risk_params_from_args.get(
-            "max_pos_size", DEFAULT_RISKGUARD_MAX_POS_SIZE
+            "max_pos_size",
+            DEFAULT_RISKGUARD_MAX_POS_SIZE,
         )
         max_concentration = risk_params_from_args.get(
-            "max_concentration", DEFAULT_RISKGUARD_MAX_CONCENTRATION
+            "max_concentration",
+            DEFAULT_RISKGUARD_MAX_CONCENTRATION,
         )
 
         logger.debug(
             f"[{self.name} Tool ({invocation_id_short})] Using Risk Params: url={risk_guard_target_url}, "
-            f"max_pos_size={max_pos_size}, max_concentration={max_concentration}"
+            f"max_pos_size={max_pos_size}, max_concentration={max_concentration}",
         )
 
         final_result_dict = {
@@ -183,7 +187,7 @@ class A2ARiskCheckTool(BaseTool):
 
         if not trade_proposal or not portfolio_state:
             logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] Error - Missing trade_proposal or portfolio_state in args."
+                f"[{self.name} Tool ({invocation_id_short})] Error - Missing trade_proposal or portfolio_state in args.",
             )
             final_result_dict["reason"] = "Tool Error: Missing input arguments."
             return Event(
@@ -192,16 +196,17 @@ class A2ARiskCheckTool(BaseTool):
                     parts=[
                         genai_types.Part(
                             function_response=genai_types.FunctionResponse(
-                                name=self.name, response=final_result_dict
-                            )
-                        )
-                    ]
+                                name=self.name,
+                                response=final_result_dict,
+                            ),
+                        ),
+                    ],
                 ),
                 turn_complete=True,
             )
 
         logger.info(
-            f"[{self.name} Tool ({invocation_id_short})] Preparing A2A call to {risk_guard_target_url}"
+            f"[{self.name} Tool ({invocation_id_short})] Preparing A2A call to {risk_guard_target_url}",
         )
 
         # --- REFACTORED SECTION ---
@@ -223,7 +228,8 @@ class A2ARiskCheckTool(BaseTool):
         client_config = ClientConfig(httpx_client=self._httpx_client)
         client_factory = ClientFactory(config=client_config)
         card_resolver = A2ACardResolver(
-            httpx_client=self._httpx_client, base_url=risk_guard_target_url
+            httpx_client=self._httpx_client,
+            base_url=risk_guard_target_url,
         )
 
         try:
@@ -238,7 +244,7 @@ class A2ARiskCheckTool(BaseTool):
                         part_data = event.parts[0].root.data
                         try:
                             risk_result_model = RiskCheckResult.model_validate(
-                                part_data
+                                part_data,
                             )
                             final_result_dict = risk_result_model.model_dump()
                         except ValidationError:
@@ -250,10 +256,10 @@ class A2ARiskCheckTool(BaseTool):
                             "Malformed response from RiskGuard"
                         )
                     break  # Assuming we only need the first message
-                elif isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
+                if isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
                     task, _ = event
                     logger.debug(
-                        f"Received task update for {task.id}: {task.status.state}"
+                        f"Received task update for {task.id}: {task.status.state}",
                     )
 
         except A2AClientInvalidStateError as e:
@@ -264,7 +270,7 @@ class A2ARiskCheckTool(BaseTool):
             final_result_dict["reason"] = f"A2A SDK Error: {e}"
         except A2AClientHTTPError as e:
             logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK HTTP Error connecting to RiskGuard ({risk_guard_target_url}): {e.status_code} - {e.message}"
+                f"[{self.name} Tool ({invocation_id_short})] A2A SDK HTTP Error connecting to RiskGuard ({risk_guard_target_url}): {e.status_code} - {e.message}",
             )
             final_result_dict["reason"] = (
                 f"A2A Network/HTTP Error: {e.status_code} - {e.message}. Is RiskGuard running?"
@@ -285,12 +291,12 @@ class A2ARiskCheckTool(BaseTool):
             )
         except Exception as e:
             logger.exception(
-                f"[{self.name} Tool ({invocation_id_short})] Unexpected Error during A2A call"
+                f"[{self.name} Tool ({invocation_id_short})] Unexpected Error during A2A call",
             )
-            final_result_dict["reason"] = f"A2A Client Error: {str(e)}"
+            final_result_dict["reason"] = f"A2A Client Error: {e!s}"
 
         logger.info(
-            f"[{self.name} Tool ({invocation_id_short})] Yielding final result: {final_result_dict}"
+            f"[{self.name} Tool ({invocation_id_short})] Yielding final result: {final_result_dict}",
         )
         return Event(
             author=self.name,
@@ -300,9 +306,9 @@ class A2ARiskCheckTool(BaseTool):
                         function_response=genai_types.FunctionResponse(
                             name=self.name,
                             response=final_result_dict,
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,  # This tool completes its action in one go
         )

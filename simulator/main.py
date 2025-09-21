@@ -1,5 +1,4 @@
-"""
-FastAPI application for the Trading Simulator UI.
+"""FastAPI application for the Trading Simulator UI.
 
 Provides a web interface to configure and run trading simulations using
 AlphaBot (via A2A) for trade signals and RiskGuard (via A2A within AlphaBot)
@@ -15,8 +14,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Common project imports
-import common.config as defaults
 import httpx
 import pandas as pd
 import plotly.graph_objects as go
@@ -32,26 +29,33 @@ from a2a.client import (
 from a2a.client.errors import A2AClientInvalidStateError
 from a2a.types import (
     DataPart,
-    Message as A2AMessage,
     Role,
 )
-from common.config import (
-    DEFAULT_SIMULATOR_PORT,
-)  # Keep this for the uvicorn runner at the bottom
-from common.models import (
-    AlphaBotTaskPayload,
-    PortfolioState as CommonPortfolioState,
-    TradeOutcome,
-    TradeStatus,
+from a2a.types import (
+    Message as A2AMessage,
 )
-from common.utils.agent_utils import create_a2a_request_from_payload
-from common.utils.indicators import calculate_sma
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from plotly.subplots import make_subplots
 from pydantic import BaseModel, Field, ValidationError
+
+# Common project imports
+import common.config as defaults
+from common.config import (
+    DEFAULT_SIMULATOR_PORT,
+)  # Keep this for the uvicorn runner at the bottom
+from common.models import (
+    AlphaBotTaskPayload,
+    TradeOutcome,
+    TradeStatus,
+)
+from common.models import (
+    PortfolioState as CommonPortfolioState,
+)
+from common.utils.agent_utils import create_a2a_request_from_payload
+from common.utils.indicators import calculate_sma
 
 from .market import MarketDataSimulator
 from .portfolio import PortfolioState, TradeAction
@@ -60,7 +64,8 @@ SIMULATOR_UI_LOGGER = "SimulatorUI"
 SIMULATOR_LOGIC_LOGGER = "SimulatorLogic"
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(SIMULATOR_UI_LOGGER)
 
@@ -80,7 +85,7 @@ def format_currency(value: Optional[float]) -> str:
         return f"${value:,.2f}"
     except Exception as e:
         logger.warning(
-            f"Unexpected error during locale formatting: {e}. Using fallback."
+            f"Unexpected error during locale formatting: {e}. Using fallback.",
         )
         return f"${value:,.2f}"
 
@@ -96,11 +101,11 @@ async def lifespan(app: FastAPI):
     except locale.Error as e:
         logger.warning(
             f"Could not set default locale ('{locale_setting}') at startup: {e}. "
-            "Check system locale settings. Using fallback currency formatting."
+            "Check system locale settings. Using fallback currency formatting.",
         )
     except Exception as e:
         logger.warning(
-            f"Unexpected error setting locale ('{locale_setting}') at startup: {e}. Using fallback formatting."
+            f"Unexpected error setting locale ('{locale_setting}') at startup: {e}. Using fallback formatting.",
         )
     yield
     logger.info("Simulator UI shutting down...")
@@ -113,7 +118,9 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 def _create_results_figure(
-    results_df: pd.DataFrame, params: Dict[str, Any], trade_markers: Dict[str, List]
+    results_df: pd.DataFrame,
+    params: Dict[str, Any],
+    trade_markers: Dict[str, List],
 ) -> go.Figure:
     """Creates the Plotly figure for simulation results."""
     MARKER_SIZE = 10
@@ -298,7 +305,11 @@ def _create_results_figure(
     fig.update_yaxes(title_text="Price ($)", row=1, col=1, secondary_y=False)
     fig.update_yaxes(title_text="Value ($)", row=2, col=1, secondary_y=False)
     fig.update_yaxes(
-        title_text="Shares", row=2, col=1, secondary_y=True, showgrid=False
+        title_text="Shares",
+        row=2,
+        col=1,
+        secondary_y=True,
+        showgrid=False,
     )
 
     return fig
@@ -328,8 +339,7 @@ async def _call_alphabot_a2a(
     params: Dict[str, Any],
     sim_logger: logging.Logger,
 ) -> Dict[str, Any]:
-    """
-    Prepares and sends a message to the AlphaBot A2A server for a given simulation day.
+    """Prepares and sends a message to the AlphaBot A2A server for a given simulation day.
 
     Args:
         client_factory: The A2A ClientFactory instance.
@@ -344,6 +354,7 @@ async def _call_alphabot_a2a(
 
     Returns:
         A dictionary containing the outcome.
+
     """
     # 1. Create a single, unified payload object.
     payload = AlphaBotTaskPayload(
@@ -400,7 +411,7 @@ async def _call_alphabot_a2a(
                                 outcome_model.trade_proposal.model_dump()
                             )
                         sim_logger.info(
-                            f"    >>> Approved Trade: {outcome.get('approved_trade')} (Reason: {outcome_model.reason})"
+                            f"    >>> Approved Trade: {outcome.get('approved_trade')} (Reason: {outcome_model.reason})",
                         )
                     elif outcome_model.status == TradeStatus.REJECTED:
                         if outcome_model.trade_proposal:
@@ -408,23 +419,23 @@ async def _call_alphabot_a2a(
                                 outcome_model.trade_proposal.model_dump()
                             )
                         sim_logger.info(
-                            f"    >>> Rejected Trade: {outcome.get('rejected_trade')} (Reason: {outcome_model.reason})"
+                            f"    >>> Rejected Trade: {outcome.get('rejected_trade')} (Reason: {outcome_model.reason})",
                         )
                     elif outcome_model.status == TradeStatus.NO_ACTION:
                         sim_logger.info(
-                            f"  >> Received info message from AlphaBot: {outcome_model.reason}"
+                            f"  >> Received info message from AlphaBot: {outcome_model.reason}",
                         )
                     outcome["reason"] = outcome_model.reason
                 else:
                     sim_logger.warning(
-                        "AlphaBot response lacked expected DataPart with TradeOutcome."
+                        "AlphaBot response lacked expected DataPart with TradeOutcome.",
                     )
                     outcome["error"] = "AlphaBot Response Format Issue or No Decision"
                 break  # We have the final message, so we can exit the loop.
-            elif isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
+            if isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
                 task, _ = event
                 sim_logger.debug(
-                    f"Received task update for {task.id}: {task.status.state}"
+                    f"Received task update for {task.id}: {task.status.state}",
                 )
 
     except A2AClientInvalidStateError as e:
@@ -432,13 +443,13 @@ async def _call_alphabot_a2a(
         outcome["error"] = f"A2A SDK Error: {e}"
     except A2AClientHTTPError as http_err:
         sim_logger.error(
-            f"A2A HTTP Error to AlphaBot: {http_err.status_code} - {http_err.message}"
+            f"A2A HTTP Error to AlphaBot: {http_err.status_code} - {http_err.message}",
         )
         outcome["error"] = (
             f"AlphaBot Connection/HTTP Error: {http_err.status_code} - {http_err.message}"
         )
         raise ConnectionError(
-            f"AlphaBot A2A HTTP Error: {http_err.message}"
+            f"AlphaBot A2A HTTP Error: {http_err.message}",
         ) from http_err
     except A2AClientJSONError as json_err:
         sim_logger.error(f"A2A JSON Error from AlphaBot: {json_err.message}")
@@ -490,7 +501,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
         # The A2AClient needs an httpx.AsyncClient. Manage its lifecycle.
         async with httpx.AsyncClient() as http_client:
             client_factory = ClientFactory(
-                config=ClientConfig(httpx_client=http_client)
+                config=ClientConfig(httpx_client=http_client),
             )
 
             a2a_session_id = f"sim-session-{uuid.uuid4().hex[:8]}"
@@ -508,11 +519,12 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                 current_price = market_sim.next_price()
                 historical_prices = market_sim.get_historical_prices()
                 sim_logger.info(
-                    f"Market Data: Price = {format_currency(current_price)}"
+                    f"Market Data: Price = {format_currency(current_price)}",
                 )
 
                 sma_short = calculate_sma(
-                    historical_prices, params["alphabot_short_sma"]
+                    historical_prices,
+                    params["alphabot_short_sma"],
                 )
                 sma_long = calculate_sma(historical_prices, params["alphabot_long_sma"])
 
@@ -529,7 +541,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                         "Shares": portfolio.shares,
                         "HoldingsValue": portfolio.holdings_value,
                         "TotalValue": portfolio.total_value,
-                    }
+                    },
                 )
 
                 a2a_outcome = await _call_alphabot_a2a(
@@ -590,7 +602,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
 
                     if is_approved:
                         sim_logger.info(
-                            f"--- Executing Approved Trade: {action} {qty} @ {price} ---"
+                            f"--- Executing Approved Trade: {action} {qty} @ {price} ---",
                         )
                         exec_action = trade_details.get("action")
                         exec_qty = trade_details.get("quantity")
@@ -616,37 +628,37 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                                 if trade_executed:
                                     portfolio.update_valuation(current_price)
                                     sim_logger.info(
-                                        f"Portfolio (Post-Trade Day {day}): {portfolio}"
+                                        f"Portfolio (Post-Trade Day {day}): {portfolio}",
                                     )
                                     signal_log_entry["log"] += " | Executed."
                                 else:
                                     sim_logger.warning(
-                                        "--- Trade Execution FAILED (Insufficient funds/shares?) ---"
+                                        "--- Trade Execution FAILED (Insufficient funds/shares?) ---",
                                     )
                                     signal_log_entry["log"] += " | Execution FAILED."
                             else:
                                 sim_logger.error(
-                                    f"--- Trade Execution SKIPPED - Unknown action '{exec_action}' ---"
+                                    f"--- Trade Execution SKIPPED - Unknown action '{exec_action}' ---",
                                 )
                                 signal_log_entry["log"] += (
                                     f" | Execution SKIPPED (Unknown Action: {exec_action})."
                                 )
                         else:
                             sim_logger.error(
-                                f"--- Trade Execution SKIPPED - Missing details: {trade_details} ---"
+                                f"--- Trade Execution SKIPPED - Missing details: {trade_details} ---",
                             )
                             signal_log_entry["log"] += (
                                 " | Execution SKIPPED (Missing Data)."
                             )
                         sim_logger.info(
-                            f"Portfolio (After {action} attempt Day {day}): {portfolio}"
+                            f"Portfolio (After {action} attempt Day {day}): {portfolio}",
                         )
                     else:  # Trade was rejected
                         sim_logger.info(
-                            f"--- Trade Rejected: {action} {qty} @ {price} (Reason: {reason_from_outcome}) ---"
+                            f"--- Trade Rejected: {action} {qty} @ {price} (Reason: {reason_from_outcome}) ---",
                         )
                         sim_logger.info(
-                            f"Portfolio (Rejected Trade Day {day}): {portfolio}"
+                            f"Portfolio (Rejected Trade Day {day}): {portfolio}",
                         )
                 else:  # No trade_details and no A2A error means no trade was proposed
                     signal_log_entry["log"] += (
@@ -674,7 +686,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                     "Shares",
                     "HoldingsValue",
                     "TotalValue",
-                ]
+                ],
             ).set_index("Day")
         )
         trade_markers = {
@@ -745,10 +757,12 @@ async def read_root(request: Request) -> HTMLResponse:
         "DEFAULT_ALPHABOT_LONG_SMA": defaults.DEFAULT_ALPHABOT_LONG_SMA,
         "DEFAULT_ALPHABOT_TRADE_QTY": defaults.DEFAULT_ALPHABOT_TRADE_QTY,
         "DEFAULT_ALPHABOT_URL": os.environ.get(
-            "ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL
+            "ALPHABOT_SERVICE_URL",
+            defaults.DEFAULT_ALPHABOT_URL,
         ).rstrip("/"),  # Ensure no trailing slash for UI default
         "DEFAULT_RISKGUARD_URL": os.environ.get(
-            "RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL
+            "RISKGUARD_SERVICE_URL",
+            defaults.DEFAULT_RISKGUARD_URL,
         ).rstrip("/"),  # Ensure no trailing slash
         "DEFAULT_RISKGUARD_MAX_POS_SIZE": defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE,
         "DEFAULT_RISKGUARD_MAX_CONCENTRATION": defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION,
@@ -759,7 +773,9 @@ async def read_root(request: Request) -> HTMLResponse:
         "DEFAULT_SIM_TREND": defaults.DEFAULT_SIM_TREND,
     }
     return templates.TemplateResponse(
-        request=request, name="index.html", context=template_context
+        request=request,
+        name="index.html",
+        context=template_context,
     )
 
 
@@ -767,7 +783,9 @@ class SimulationRunParams(BaseModel):
     """Parameters for configuring and running a trading simulation, with validation."""
 
     alphabot_short_sma: int = Field(
-        ..., gt=0, description="Short window for AlphaBot SMA (must be > 0)."
+        ...,
+        gt=0,
+        description="Short window for AlphaBot SMA (must be > 0).",
     )
     alphabot_long_sma: int = Field(
         defaults.DEFAULT_ALPHABOT_LONG_SMA,
@@ -808,7 +826,8 @@ class SimulationRunParams(BaseModel):
         description="Trend for market simulation (-0.1 to 0.1).",
     )
     riskguard_url: str = Field(
-        defaults.DEFAULT_RISKGUARD_URL, description="URL for RiskGuard service."
+        defaults.DEFAULT_RISKGUARD_URL,
+        description="URL for RiskGuard service.",
     )
     riskguard_max_pos_size: float = Field(
         defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE,
@@ -822,7 +841,8 @@ class SimulationRunParams(BaseModel):
         description="Maximum portfolio concentration (%) allowed by RiskGuard (0-100).",
     )
     alphabot_url: str = Field(
-        defaults.DEFAULT_ALPHABOT_URL, description="URL for AlphaBot service."
+        defaults.DEFAULT_ALPHABOT_URL,
+        description="URL for AlphaBot service.",
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -833,7 +853,9 @@ class SimulationRunParams(BaseModel):
 
 
 def _render_error_page(
-    request: Request, error_message: str, form_values: Dict[str, Any]
+    request: Request,
+    error_message: str,
+    form_values: Dict[str, Any],
 ) -> HTMLResponse:
     """Helper function to render the main page with an error message."""
     template_context = {
@@ -847,10 +869,12 @@ def _render_error_page(
         "DEFAULT_ALPHABOT_LONG_SMA": defaults.DEFAULT_ALPHABOT_LONG_SMA,
         "DEFAULT_ALPHABOT_TRADE_QTY": defaults.DEFAULT_ALPHABOT_TRADE_QTY,
         "DEFAULT_ALPHABOT_URL": os.environ.get(
-            "ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL
+            "ALPHABOT_SERVICE_URL",
+            defaults.DEFAULT_ALPHABOT_URL,
         ).rstrip("/"),
         "DEFAULT_RISKGUARD_URL": os.environ.get(
-            "RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL
+            "RISKGUARD_SERVICE_URL",
+            defaults.DEFAULT_RISKGUARD_URL,
         ).rstrip("/"),
         "DEFAULT_RISKGUARD_MAX_POS_SIZE": defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE,
         "DEFAULT_RISKGUARD_MAX_CONCENTRATION": defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION,
@@ -861,7 +885,9 @@ def _render_error_page(
         "DEFAULT_SIM_TREND": defaults.DEFAULT_SIM_TREND,
     }
     return templates.TemplateResponse(
-        request=request, name="index.html", context=template_context
+        request=request,
+        name="index.html",
+        context=template_context,
     )
 
 
@@ -877,14 +903,14 @@ async def handle_run_simulation(
     sim_volatility: float = Form(defaults.DEFAULT_SIM_VOLATILITY),
     sim_trend: float = Form(defaults.DEFAULT_SIM_TREND),
     riskguard_url: str = Form(
-        os.environ.get("RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL)
+        os.environ.get("RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL),
     ),  # Get from env or default
     riskguard_max_pos_size: float = Form(defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE),
     riskguard_max_concentration: int = Form(  # Input as int
-        int(defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION * 100)
+        int(defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION * 100),
     ),
     alphabot_url: str = Form(
-        os.environ.get("ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL)
+        os.environ.get("ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL),
     ),  # Get from env or default
 ):
     """Handles the simulation run request, validating parameters via Pydantic."""
@@ -926,12 +952,16 @@ async def handle_run_simulation(
     except ValidationError as e:
         logger.error(f"Simulation parameter validation failed: {e}")
         return _render_error_page(
-            request, f"Invalid simulation parameters: {e}", form_values
+            request,
+            f"Invalid simulation parameters: {e}",
+            form_values,
         )
     except Exception as e:  # Catch other unexpected errors during param processing
         logger.error(f"Unexpected error processing parameters: {e}", exc_info=True)
         return _render_error_page(
-            request, f"Error processing parameters: {e}", form_values
+            request,
+            f"Error processing parameters: {e}",
+            form_values,
         )
 
     logger.info(f"Received simulation request with validated params: {params_dict}")
@@ -950,8 +980,9 @@ async def handle_run_simulation(
             if results.get("success")
             else {
                 "detailed_log": results.get(
-                    "detailed_log", "No detailed log available."
-                )
+                    "detailed_log",
+                    "No detailed log available.",
+                ),
             },
         },
         "params": params_dict,
@@ -959,10 +990,12 @@ async def handle_run_simulation(
         "DEFAULT_ALPHABOT_LONG_SMA": defaults.DEFAULT_ALPHABOT_LONG_SMA,
         "DEFAULT_ALPHABOT_TRADE_QTY": defaults.DEFAULT_ALPHABOT_TRADE_QTY,
         "DEFAULT_ALPHABOT_URL": os.environ.get(
-            "ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL
+            "ALPHABOT_SERVICE_URL",
+            defaults.DEFAULT_ALPHABOT_URL,
         ).rstrip("/"),
         "DEFAULT_RISKGUARD_URL": os.environ.get(
-            "RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL
+            "RISKGUARD_SERVICE_URL",
+            defaults.DEFAULT_RISKGUARD_URL,
         ).rstrip("/"),
         "DEFAULT_RISKGUARD_MAX_POS_SIZE": defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE,
         "DEFAULT_RISKGUARD_MAX_CONCENTRATION": defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION,
@@ -973,7 +1006,9 @@ async def handle_run_simulation(
         "DEFAULT_SIM_TREND": defaults.DEFAULT_SIM_TREND,
     }
     return templates.TemplateResponse(
-        request=request, name="index.html", context=template_context
+        request=request,
+        name="index.html",
+        context=template_context,
     )
 
 
@@ -989,18 +1024,21 @@ if __name__ == "__main__":
     logger.info("--- Starting FastAPI server for Simulator UI ---")
     logger.info("Ensure dependent A2A services are running:")
     logger.info(
-        f"  RiskGuard: python -m riskguard --port {defaults.DEFAULT_RISKGUARD_URL.split(':')[-1]}"
+        f"  RiskGuard: python -m riskguard --port {defaults.DEFAULT_RISKGUARD_URL.split(':')[-1]}",
     )
     logger.info(
-        f"  AlphaBot:  python -m alphabot --port {defaults.DEFAULT_ALPHABOT_URL.split(':')[-1]}"
+        f"  AlphaBot:  python -m alphabot --port {defaults.DEFAULT_ALPHABOT_URL.split(':')[-1]}",
     )
     logger.info("Required Environment Variables (if not using defaults):")
     logger.info(f"  RISKGUARD_SERVICE_URL (default: {defaults.DEFAULT_RISKGUARD_URL})")
     logger.info(f"  ALPHABOT_SERVICE_URL (default: {defaults.DEFAULT_ALPHABOT_URL})")
     logger.info(
-        f"--- Access UI at http://0.0.0.0:{DEFAULT_SIMULATOR_PORT} ---"
+        f"--- Access UI at http://0.0.0.0:{DEFAULT_SIMULATOR_PORT} ---",
     )  # Using imported DEFAULT_SIMULATOR_PORT
 
     uvicorn.run(
-        "simulator.main:app", host="0.0.0.0", port=DEFAULT_SIMULATOR_PORT, reload=True
+        "simulator.main:app",
+        host="0.0.0.0",
+        port=DEFAULT_SIMULATOR_PORT,
+        reload=True,
     )

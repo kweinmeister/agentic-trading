@@ -1,9 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
-from simulator.main import app, _call_alphabot_a2a
-import common.config as defaults
-from common.models import TradeProposal, TradeOutcome, TradeStatus
 from a2a.client import ClientFactory
 from a2a.types import (
     DataPart,
@@ -11,6 +8,11 @@ from a2a.types import (
     Part,
     Role,
 )
+from fastapi.testclient import TestClient
+
+import common.config as defaults
+from common.models import TradeOutcome, TradeProposal, TradeStatus
+from simulator.main import _call_alphabot_a2a, app
 from simulator.portfolio import PortfolioState
 
 client = TestClient(app)
@@ -51,7 +53,9 @@ def test_read_main():
 
 @pytest.mark.asyncio
 async def test_call_alphabot_a2a_with_factory(
-    mock_a2a_sdk_components, test_agent_card, mock_a2a_send_message_generator
+    mock_a2a_sdk_components,
+    test_agent_card,
+    mock_a2a_send_message_generator,
 ):
     """Verify that _call_alphabot_a2a correctly uses the ClientFactory."""
     mock_logger = MagicMock()
@@ -64,7 +68,10 @@ async def test_call_alphabot_a2a_with_factory(
 
     # Configure the client to return a successful message
     expected_trade_proposal = TradeProposal(
-        action="BUY", quantity=10, price=100.0, ticker="TEST"
+        action="BUY",
+        quantity=10,
+        price=100.0,
+        ticker="TEST",
     )
     trade_outcome = TradeOutcome(
         status=TradeStatus.APPROVED,
@@ -125,12 +132,14 @@ async def test_call_alphabot_a2a_factory_raises_transport_error():
 
     # Configure the factory mock to raise an error on card resolution
     mock_factory.create.side_effect = A2AClientHTTPError(
-        message="Resolution failed", status_code=404
+        message="Resolution failed",
+        status_code=404,
     )
 
     with patch("simulator.main.A2ACardResolver") as mock_resolver:
         mock_resolver.return_value.get_agent_card.side_effect = A2AClientHTTPError(
-            message="Resolution failed", status_code=404
+            message="Resolution failed",
+            status_code=404,
         )
 
         with pytest.raises(ConnectionError):

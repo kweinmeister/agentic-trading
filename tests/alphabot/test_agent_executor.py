@@ -1,10 +1,10 @@
 from typing import Callable
 
 import pytest
-from a2a.types import DataPart, Message, Part, Role
-from alphabot.agent_executor import AlphaBotAgentExecutor
 from a2a.server.agent_execution import RequestContext
-from a2a.types import MessageSendParams
+from a2a.types import DataPart, Message, MessageSendParams, Part, Role
+
+from alphabot.agent_executor import AlphaBotAgentExecutor
 
 
 @pytest.fixture
@@ -36,7 +36,9 @@ async def test_execute_success_buy_decision(
 
     # Arrange
     request_message = alphabot_message_factory(
-        historical_prices=[150.0, 151.0, 152.0], current_price=155.0, day=1
+        historical_prices=[150.0, 151.0, 152.0],
+        current_price=155.0,
+        day=1,
     )
     mock_runner_instance.run_async.return_value = adk_mock_alphabot_generator(
         final_state_delta={"approved_trade": {"action": "BUY", "quantity": 10}},
@@ -131,7 +133,8 @@ async def test_execute_adk_runner_exception(
     # Arrange
     mock_runner_instance.run_async.side_effect = Exception("ADK Borked")
     request_message = alphabot_message_factory(
-        historical_prices=[150.0, 151.0, 152.0], current_price=155.0
+        historical_prices=[150.0, 151.0, 152.0],
+        current_price=155.0,
     )
 
     # Act
@@ -163,10 +166,11 @@ async def test_execute_adk_runner_exception(
 
 @pytest.mark.asyncio
 async def test_execute_handles_adk_runner_exception(
-    alphabot_message_factory, mock_runner_factory, event_queue
+    alphabot_message_factory,
+    mock_runner_factory,
+    event_queue,
 ):
-    """
-    Tests that if the ADK runner fails, the executor enqueues an error message
+    """Tests that if the ADK runner fails, the executor enqueues an error message
     and closes the queue.
     """
     # Arrange
@@ -206,15 +210,16 @@ async def test_execute_returns_dict_not_string(
     event_queue,
     adk_mock_alphabot_generator,
 ):
-    """
-    Ensures the final `DataPart` contains a dictionary, not a JSON string.
+    """Ensures the final `DataPart` contains a dictionary, not a JSON string.
     This prevents a `ValidationError` at runtime.
     """
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
     # Arrange
     request_message = alphabot_message_factory(
-        historical_prices=[150.0, 151.0, 152.0], current_price=155.0, day=1
+        historical_prices=[150.0, 151.0, 152.0],
+        current_price=155.0,
+        day=1,
     )
     mock_runner_instance.run_async.return_value = adk_mock_alphabot_generator(
         final_state_delta={"approved_trade": {"action": "BUY", "quantity": 10}},

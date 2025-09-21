@@ -6,7 +6,10 @@ def test_risk_check_with_very_small_limits(riskguard_input_data_factory):
     """Test risk check with very small limit values."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="SMALL", quantity=1, price=0.01
+            action="BUY",
+            ticker="SMALL",
+            quantity=1,
+            price=0.01,
         ),
         portfolio_state=PortfolioState(cash=0.01, shares=0, total_value=0.01),
         max_pos_size=0.001,
@@ -27,10 +30,15 @@ def test_risk_check_with_very_large_limits(riskguard_input_data_factory):
     """Test risk check with very large limit values."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="LARGE", quantity=1000000, price=1000.0
+            action="BUY",
+            ticker="LARGE",
+            quantity=1000000,
+            price=1000.0,
         ),
         portfolio_state=PortfolioState(
-            cash=1000000000.0, shares=0, total_value=1000000000.0
+            cash=1000000000.0,
+            shares=0,
+            total_value=1000000000.0,
         ),
         max_pos_size=10000000000.0,
         max_concentration=1.0,
@@ -50,7 +58,10 @@ def test_risk_check_approve_valid_trade(riskguard_input_data_factory):
     """Tests check_trade_risk_logic approves a valid trade."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=10, price=150.0
+            action="BUY",
+            ticker="TECH",
+            quantity=10,
+            price=150.0,
         ),
         portfolio_state=PortfolioState(cash=10000.0, shares=0, total_value=10000.0),
     )
@@ -83,7 +94,10 @@ def test_risk_check_rejects_negative_portfolio_value(riskguard_input_data_factor
     # However, the logic should be more strict about negative portfolio values
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=50, price=10.0
+            action="BUY",
+            ticker="TECH",
+            quantity=50,
+            price=10.0,
         ),  # $500 trade
         portfolio_state=PortfolioState(cash=100.0, shares=0, total_value=100.0),
         max_pos_size=1000.0,  # Large enough to not block the trade
@@ -107,7 +121,10 @@ def test_risk_check_reject_pos_size(riskguard_input_data_factory):
     """Tests check_trade_risk_logic rejects a trade exceeding max position size."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=60, price=100.0
+            action="BUY",
+            ticker="TECH",
+            quantity=60,
+            price=100.0,
         ),
         portfolio_state=PortfolioState(cash=10000.0, shares=0, total_value=10000.0),
         max_pos_size=5000,
@@ -127,7 +144,10 @@ def test_risk_check_reject_insufficient_cash(riskguard_input_data_factory):
     """Tests check_trade_risk_logic rejects a BUY trade with insufficient cash."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=100, price=150.0
+            action="BUY",
+            ticker="TECH",
+            quantity=100,
+            price=150.0,
         ),
         portfolio_state=PortfolioState(cash=1000.0, shares=0, total_value=1000.0),
     )
@@ -143,7 +163,10 @@ def test_risk_check_reject_concentration_limit(riskguard_input_data_factory):
     """Tests check_trade_risk_logic rejects a trade exceeding concentration limit."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=50, price=100.0
+            action="BUY",
+            ticker="TECH",
+            quantity=50,
+            price=100.0,
         ),
         portfolio_state=PortfolioState(cash=10000.0, shares=0, total_value=10000.0),
         max_concentration=0.3,
@@ -161,7 +184,10 @@ def test_risk_check_reject_insufficient_shares(riskguard_input_data_factory):
     """Tests check_trade_risk_logic rejects a SELL trade with insufficient shares."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="SELL", ticker="TECH", quantity=100, price=100.0
+            action="SELL",
+            ticker="TECH",
+            quantity=100,
+            price=100.0,
         ),
         portfolio_state=PortfolioState(cash=10000.0, shares=50, total_value=15000.0),
     )
@@ -177,8 +203,11 @@ def test_risk_check_reject_unknown_action(riskguard_input_data_factory):
     """Tests check_trade_risk_logic rejects a trade with unknown action."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=100, price=100.0
-        )
+            action="BUY",
+            ticker="TECH",
+            quantity=100,
+            price=100.0,
+        ),
     )
     input_data.trade_proposal.action = "HOLD"  # Manually set invalid action
     result = check_trade_risk_logic(
@@ -193,8 +222,11 @@ def test_risk_check_invalid_input(riskguard_input_data_factory):
     """Tests check_trade_risk_logic handles invalid input data."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=-10, price=100.0
-        )
+            action="BUY",
+            ticker="TECH",
+            quantity=-10,
+            price=100.0,
+        ),
     )
     result = check_trade_risk_logic(
         trade_proposal=input_data.trade_proposal,
@@ -208,7 +240,10 @@ def test_risk_check_zero_values(riskguard_input_data_factory):
     """Tests check_trade_risk_logic handles zero values correctly."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=0, price=0.0
+            action="BUY",
+            ticker="TECH",
+            quantity=0,
+            price=0.0,
         ),
         portfolio_state=PortfolioState(cash=10000.0, shares=0, total_value=10000.0),
     )
@@ -226,7 +261,10 @@ def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
     """Tests that a trade using the exact available cash is approved."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=10, price=100.0
+            action="BUY",
+            ticker="TECH",
+            quantity=10,
+            price=100.0,
         ),
         portfolio_state=PortfolioState(cash=1000.0, shares=0, total_value=1000.0),
     )
@@ -241,13 +279,15 @@ def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
 
 
 def test_risk_check_division_by_zero(riskguard_input_data_factory):
-    """
-    Tests that check_trade_risk_logic handles a portfolio with a total value of
+    """Tests that check_trade_risk_logic handles a portfolio with a total value of
     zero gracefully, preventing a ZeroDivisionError.
     """
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
-            action="BUY", ticker="TECH", quantity=10, price=100.0
+            action="BUY",
+            ticker="TECH",
+            quantity=10,
+            price=100.0,
         ),
         portfolio_state=PortfolioState(cash=0.0, shares=0, total_value=0.0),
         max_concentration=0.5,

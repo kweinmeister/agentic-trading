@@ -1,12 +1,11 @@
 import logging
 
-from common.models import PortfolioState, RiskCheckResult, TradeProposal
-
 # Import defaults from the common config
 from common.config import (
     DEFAULT_RISKGUARD_MAX_CONCENTRATION,
     DEFAULT_RISKGUARD_MAX_POS_SIZE,
 )
+from common.models import PortfolioState, RiskCheckResult, TradeProposal
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +16,7 @@ def check_trade_risk_logic(
     max_pos_size: float = DEFAULT_RISKGUARD_MAX_POS_SIZE,  # Use imported default
     max_concentration: float = DEFAULT_RISKGUARD_MAX_CONCENTRATION,  # Use imported default
 ) -> RiskCheckResult:
-    """
-    Encapsulates the risk checking logic, using provided limits.
+    """Encapsulates the risk checking logic, using provided limits.
 
     Args:
         trade_proposal: TradeProposal model instance.
@@ -26,6 +24,7 @@ def check_trade_risk_logic(
 
     Returns:
         RiskCheckResult indicating approval status and reason.
+
     """
     logger.info(f"Checking proposal: {trade_proposal}")
 
@@ -40,12 +39,13 @@ def check_trade_risk_logic(
         ticker
         and isinstance(action, str)
         and isinstance(
-            quantity, (int, float)
+            quantity,
+            (int, float),
         )  # Allow float for quantity if needed, though int is preferred
         and isinstance(price, (int, float))
     ):
         logger.warning(
-            "Invalid trade proposal structure or values (missing fields or wrong types)."
+            "Invalid trade proposal structure or values (missing fields or wrong types).",
         )
         return RiskCheckResult(
             approved=False,
@@ -56,7 +56,8 @@ def check_trade_risk_logic(
     if quantity <= 0 or price <= 0:
         logger.warning("Trade quantity and price must be positive.")
         return RiskCheckResult(
-            approved=False, reason="Trade quantity and price must be positive."
+            approved=False,
+            reason="Trade quantity and price must be positive.",
         )
 
     # Get portfolio details safely
@@ -66,7 +67,8 @@ def check_trade_risk_logic(
     if total_value <= 0:
         logger.warning("Invalid total portfolio value for risk check.")
         return RiskCheckResult(
-            approved=False, reason="Invalid total portfolio value for risk check."
+            approved=False,
+            reason="Invalid total portfolio value for risk check.",
         )
 
     proposed_trade_value = quantity * price
@@ -126,7 +128,8 @@ def check_trade_risk_logic(
     else:
         logger.warning(f"Unknown trade action '{action}'.")
         return RiskCheckResult(
-            approved=False, reason=f"Unknown trade action '{action}'."
+            approved=False,
+            reason=f"Unknown trade action '{action}'.",
         )
 
     # If all checks passed for the given action

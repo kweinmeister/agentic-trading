@@ -1,12 +1,13 @@
+from unittest.mock import AsyncMock
+
+import httpx
 import pytest
+from a2a.types import Message, Role
+
+from alphabot.a2a_risk_tool import A2ARiskCheckTool
 from alphabot.agent import AlphaBotAgent
 from common.models import AlphaBotTaskPayload, PortfolioState
 from common.utils.agent_utils import create_a2a_message_from_payload
-from a2a.types import Message, Role
-from unittest.mock import AsyncMock
-import httpx
-
-from alphabot.a2a_risk_tool import A2ARiskCheckTool
 
 
 @pytest.fixture
@@ -101,8 +102,7 @@ def historical_prices_sell_signal() -> list[float]:
 
 @pytest.fixture
 def alphabot_input_data_factory(base_portfolio_state: PortfolioState):
-    """
-    Provides a factory for creating AlphaBotTaskPayload instances.
+    """Provides a factory for creating AlphaBotTaskPayload instances.
     Injects shared base model fixtures from the root conftest.
     """
 
@@ -163,8 +163,7 @@ def mock_httpx_client() -> AsyncMock:
 def risk_check_tool(
     mock_httpx_client: AsyncMock,
 ) -> A2ARiskCheckTool:
-    """
-    Provides an A2ARiskCheckTool instance with a mocked httpx_client
+    """Provides an A2ARiskCheckTool instance with a mocked httpx_client
     for hermetic testing.
     """
     # The tool is now a real object, but its http client is a mock,
