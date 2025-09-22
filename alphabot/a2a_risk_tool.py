@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from typing import Any, Dict
 
 import httpx
@@ -14,6 +15,7 @@ from a2a.client.errors import A2AClientInvalidStateError
 from a2a.types import (
     DataPart,
     Message,
+    Part,
     Role,
 )
 from google.adk.events import Event
@@ -32,7 +34,6 @@ from common.models import (
     RiskCheckResult,
     TradeProposal,
 )
-from common.utils.agent_utils import create_a2a_request_from_payload
 
 logger = logging.getLogger(__name__)
 
@@ -221,9 +222,6 @@ class A2ARiskCheckTool(BaseTool):
             max_concentration=max_concentration,
         )
 
-        # 2. Use the new helper to create the A2A Request
-        a2a_request = create_a2a_request_from_payload(risk_payload, role=Role.user)
-
         # Corrected approach based on SDK source
         client_config = ClientConfig(httpx_client=self._httpx_client)
         client_factory = ClientFactory(config=client_config)
@@ -238,7 +236,14 @@ class A2ARiskCheckTool(BaseTool):
 
             # The new client uses a streaming response. We need to iterate.
             # The `send_message` method expects the `Message` object directly.
-            async for event in a2a_sdk_client.send_message(a2a_request.params.message):
+            message_to_send = Message(
+                message_id=f"msg-{uuid.uuid4().hex[:8]}",
+                role=Role.user,
+                parts=[
+                    Part(root=DataPart(data=risk_payload.model_dump(mode="json"))),
+                ],
+            )
+            async for event in a2a_sdk_client.send_message(message_to_send):
                 if isinstance(event, Message):
                     if event.parts and isinstance(event.parts[0].root, DataPart):
                         part_data = event.parts[0].root.data

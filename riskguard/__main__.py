@@ -1,5 +1,4 @@
 import logging
-import os
 
 import click
 from a2a.server.apps import A2AStarletteApplication
@@ -8,6 +7,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 import common.config as defaults
+from common.utils.agent_utils import get_service_url
 
 from .agent import root_agent as riskguard_adk_agent
 from .agent_executor import RiskGuardAgentExecutor  # Renamed from RiskGuardTaskManager
@@ -39,22 +39,11 @@ def main(host: str, port: int, proxy_headers: bool):
     logger.info("Configuring RiskGuard A2A server...")
 
     try:
-        # Get public URL from environment variable for cloud deployment.
-        public_url = os.environ.get("RISKGUARD_SERVICE_URL")
-
-        # Use the public URL for the agent card, otherwise fall back to local host/port.
-        if public_url:
-            logger.info(f"Using public URL from environment: {public_url}")
-            card_url = public_url
-        else:
-            card_url = f"http://{host}:{port}"
-            logger.info(
-                f"No RISKGUARD_SERVICE_URL env var found. Falling back to local URL: {card_url}",
-            )
+        card_url = get_service_url("RISKGUARD_SERVICE_URL", host, port)
         agent_card = AgentCard(
             name=riskguard_adk_agent.name,
             description=riskguard_adk_agent.description,
-            url=card_url.rstrip("/"),  # Use the determined URL
+            url=card_url,
             version="1.1.0",
             capabilities=AgentCapabilities(
                 streaming=False,

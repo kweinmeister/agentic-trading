@@ -322,18 +322,6 @@ async def test_run_async_a2a_http_error(
 
 
 @pytest.mark.asyncio
-async def test_run_async_json_rpc_error(
-    risk_check_tool: A2ARiskCheckTool,
-    tool_context: ToolContext,
-    mock_a2a_sdk_components,
-):
-    """Tests that the tool handles a JSONRPCErrorResponse from RiskGuard."""
-    # This test is no longer relevant as the new client handles errors differently.
-    # The new client will raise an A2AClientJSONRPCError, which is handled by the
-    # generic exception handler. We can add a new test for that.
-
-
-@pytest.mark.asyncio
 async def test_run_async_transport_resolution_error(
     risk_check_tool: A2ARiskCheckTool,
     tool_context: ToolContext,

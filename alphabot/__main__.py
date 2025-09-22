@@ -1,5 +1,4 @@
 import logging
-import os
 
 import click
 from a2a.server.apps import A2AStarletteApplication
@@ -8,6 +7,7 @@ from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
 import common.config as defaults
+from common.utils.agent_utils import get_service_url
 
 # Import the specific AgentExecutor for AlphaBot
 from .agent_executor import AlphaBotAgentExecutor
@@ -40,22 +40,11 @@ def main(host: str, port: int, proxy_headers: bool):
 
     # Define the Agent Card for AlphaBot
     try:
-        # Get the public URL from an environment variable if it exists.
-        public_url = os.environ.get("ALPHABOT_SERVICE_URL")
-
-        # Use the public URL for the agent card, otherwise fall back to local host/port.
-        if public_url:
-            logger.info(f"Using public URL from environment: {public_url}")
-            card_url = public_url
-        else:
-            card_url = f"http://{host}:{port}"
-            logger.info(
-                f"No ALPHABOT_SERVICE_URL env var found. Falling back to local URL: {card_url}",
-            )
+        card_url = get_service_url("ALPHABOT_SERVICE_URL", host, port)
         agent_card = AgentCard(
             name="AlphaBot Agent",
             description="Trading agent that analyzes market data and portfolio state to propose trades.",
-            url=card_url.rstrip("/"),
+            url=card_url,
             version="1.0.0",
             capabilities=AgentCapabilities(
                 streaming=False,  # AlphaBotTaskManager doesn't support streaming

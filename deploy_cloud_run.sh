@@ -72,11 +72,10 @@ echo "RiskGuard URL: $RISKGUARD_SERVICE_URL"
 
 # Step 1.4: Update service with its own public URL (Pass 2)
 echo "Updating RiskGuard service ($RISKGUARD_SERVICE_NAME) with its public URL..."
-gcloud run deploy $RISKGUARD_SERVICE_NAME \
-    --image=$RISKGUARD_IMAGE_TAG \
+gcloud run services update $RISKGUARD_SERVICE_NAME \
     --platform managed \
     --region $REGION \
-    --set-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL" \
+    --update-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL" \
     --project=$PROJECT_ID
 echo "---"
 
@@ -105,11 +104,10 @@ echo "AlphaBot URL: $ALPHABOT_SERVICE_URL"
 
 # Step 2.4: Update the service with its own public URL (Pass 2)
 echo "Updating AlphaBot service ($ALPHABOT_SERVICE_NAME) with its public URL..."
-gcloud run deploy $ALPHABOT_SERVICE_NAME \
-    --image=$ALPHABOT_IMAGE_TAG \
+gcloud run services update $ALPHABOT_SERVICE_NAME \
     --platform managed \
     --region $REGION \
-    --set-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL,ALPHABOT_SERVICE_URL=$ALPHABOT_SERVICE_URL" \
+    --update-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL,ALPHABOT_SERVICE_URL=$ALPHABOT_SERVICE_URL" \
     --project=$PROJECT_ID
 echo "---"
 

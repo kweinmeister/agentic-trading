@@ -29,6 +29,7 @@ from a2a.client import (
 from a2a.client.errors import A2AClientInvalidStateError
 from a2a.types import (
     DataPart,
+    Part,
     Role,
 )
 from a2a.types import (
@@ -54,7 +55,6 @@ from common.models import (
 from common.models import (
     PortfolioState as CommonPortfolioState,
 )
-from common.utils.agent_utils import create_a2a_request_from_payload
 from common.utils.indicators import calculate_sma
 
 from .market import MarketDataSimulator
@@ -375,7 +375,7 @@ async def _call_alphabot_a2a(
     )
 
     # 2. Use the new helper to create the A2A Request
-    sdk_request = create_a2a_request_from_payload(payload, role=Role.user)
+    # This is now handled by the A2A SDK client
 
     sim_logger.info(f"--- Calling AlphaBot A2A Server (Session ID: {session_id}) ---")
     outcome: Dict[str, Any] = {
@@ -398,7 +398,14 @@ async def _call_alphabot_a2a(
         a2a_sdk_client = client_factory.create(agent_card)
 
         # The new client returns a stream. We iterate and process the events.
-        async for event in a2a_sdk_client.send_message(sdk_request.params.message):
+        message_to_send = A2AMessage(
+            message_id=f"msg-{uuid.uuid4().hex[:8]}",
+            role=Role.user,
+            parts=[
+                Part(root=DataPart(data=payload.model_dump(mode="json"))),
+            ],
+        )
+        async for event in a2a_sdk_client.send_message(message_to_send):
             if isinstance(event, A2AMessage):
                 # This is the final response message
                 if event.parts and isinstance(event.parts[0].root, DataPart):

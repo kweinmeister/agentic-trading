@@ -1,95 +1,73 @@
-import json
 import logging
-import uuid
-from typing import Optional, Type, TypeVar
+import os
+from typing import Any
 
-from a2a.types import (
-    DataPart,
-    Message,
-    MessageSendParams,
-    Part,
-    Role,
-    SendMessageRequest,
-)
-from google.adk.agents.invocation_context import InvocationContext
+from google.adk.agents import InvocationContext
 from pydantic import BaseModel, ValidationError
 
-T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
+
+
+def get_service_url(env_var_name: str, host: str, port: int) -> str:
+    """Determines the service URL by checking an environment variable first,
+    then falling back to a host/port combination.
+
+    Args:
+        env_var_name: The name of the environment variable to check.
+        host: The hostname to use as a fallback.
+        port: The port to use as a fallback.
+
+    Returns:
+        The determined service URL.
+
+    """
+    if public_url := os.environ.get(env_var_name):
+        logger.info(
+            f"Using public URL from environment variable '{env_var_name}': {public_url}",
+        )
+        return public_url.rstrip("/")
+
+    card_url = f"http://{host}:{port}"
+    logger.info(
+        f"No '{env_var_name}' env var found. Falling back to local URL: {card_url}",
+    )
+    return card_url
 
 
 def parse_and_validate_input(
     ctx: InvocationContext,
-    model: Type[T],
+    payload_model: type[BaseModel],
     agent_name: str,
-) -> T | None:
-    """Parses and validates input JSON into a Pydantic model."""
+) -> Any | None:
+    """Parses and validates the input from the invocation context against a Pydantic model."""
     invocation_id_short = ctx.invocation_id[:8]
-    logger.debug(
-        f"[{agent_name} ({invocation_id_short})] Attempting to parse input with Pydantic...",
-    )
-    if (
-        not ctx.user_content
-        or not ctx.user_content.parts
-        or not hasattr(ctx.user_content.parts[0], "text")
+
+    # Correct way to access the input data from the InvocationContext
+    if not (
+        ctx.user_content and ctx.user_content.parts and ctx.user_content.parts[0].text
     ):
-        logger.error(
-            f"[{agent_name} ({invocation_id_short})] ERROR - Input event text not found.",
+        logger.warning(
+            f"[{agent_name} ({invocation_id_short})] Input data is missing or malformed.",
         )
         return None
 
-    input_text = ctx.user_content.parts[0].text
-    if input_text is None:
-        logger.error(
-            f"[{agent_name} ({invocation_id_short})] ERROR - Input event text is None.",
-        )
-        return None
+    # Assuming the input is a JSON string in the text part
+    input_data_str = ctx.user_content.parts[0].text
 
     try:
-        input_payload = json.loads(input_text)
-        validated_input = model(**input_payload)
-        logger.info(
-            f"[{agent_name} ({invocation_id_short})] Successfully parsed and validated input.",
+        # Pydantic's model_validate_json is ideal for parsing from a string
+        validated_input = payload_model.model_validate_json(input_data_str)
+        logger.debug(
+            f"[{agent_name} ({invocation_id_short})] Validated input: {validated_input.model_dump_json(indent=2)}",
         )
         return validated_input
-    except json.JSONDecodeError as e:
-        logger.error(
-            f"[{agent_name} ({invocation_id_short})] ERROR - Failed to decode input JSON: '{input_text[:200]}...'. Error: {e}",
-        )
-        return None
     except ValidationError as e:
         logger.error(
-            f"[{agent_name} ({invocation_id_short})] ERROR - Input validation failed: {e}. Input was: '{input_text[:200]}...'",
+            f"[{agent_name} ({invocation_id_short})] Input validation failed for data '{input_data_str}': {e}",
         )
         return None
-
-
-def create_a2a_message_from_payload(
-    payload: BaseModel,
-    role: Role,
-    metadata: Optional[dict] = None,
-    context_id: Optional[str] = None,
-) -> Message:
-    """Creates a standardized a2a.types.Message from a Pydantic model payload.
-    The payload is serialized and placed into a single DataPart.
-    """
-    # model_dump() converts the Pydantic model to a dictionary
-    data_part = DataPart(data=payload.model_dump())
-
-    return Message(
-        message_id=str(uuid.uuid4()),
-        role=role,
-        parts=[Part(root=data_part)],
-        metadata=metadata or {},
-        context_id=context_id,
-    )
-
-
-def create_a2a_request_from_payload(
-    payload: BaseModel,
-    role: Role = Role.user,
-) -> SendMessageRequest:
-    """Creates a complete SendMessageRequest from a Pydantic model payload."""
-    message = create_a2a_message_from_payload(payload, role=role)
-    send_params = MessageSendParams(message=message)
-    return SendMessageRequest(id=str(uuid.uuid4()), params=send_params)
+    except Exception as e:
+        logger.error(
+            f"[{agent_name} ({invocation_id_short})] An unexpected error occurred during parsing: {e}",
+        )
+        return None
