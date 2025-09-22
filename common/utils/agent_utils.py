@@ -1,11 +1,13 @@
 import logging
 import os
-from typing import Any
+from typing import Type, TypeVar
 
 from google.adk.agents import InvocationContext
 from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T", bound=BaseModel)
 
 
 def get_service_url(env_var_name: str, host: str, port: int) -> str:
@@ -36,9 +38,9 @@ def get_service_url(env_var_name: str, host: str, port: int) -> str:
 
 def parse_and_validate_input(
     ctx: InvocationContext,
-    payload_model: type[BaseModel],
+    payload_model: Type[T],
     agent_name: str,
-) -> Any | None:
+) -> T | None:
     """Parses and validates the input from the invocation context against a Pydantic model."""
     invocation_id_short = ctx.invocation_id[:8]
 
