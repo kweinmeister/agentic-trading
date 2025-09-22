@@ -1,3 +1,5 @@
+"""Tests for the indicator calculation utilities."""
+
 from common.utils.indicators import calculate_sma
 
 

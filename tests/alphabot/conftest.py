@@ -1,3 +1,5 @@
+"""Fixtures for AlphaBot tests."""
+
 import uuid
 from unittest.mock import AsyncMock
 
@@ -12,13 +14,13 @@ from common.models import AlphaBotTaskPayload, PortfolioState
 
 @pytest.fixture
 def agent() -> AlphaBotAgent:
-    """Provides an AlphaBotAgent instance."""
+    """Provide an AlphaBotAgent instance."""
     return AlphaBotAgent(stock_ticker="TEST")
 
 
 @pytest.fixture
 def historical_prices_buy_signal() -> list[float]:
-    """Provides a list of historical prices that will trigger a BUY signal."""
+    """Provide a list of historical prices that will trigger a BUY signal."""
     return [
         130,
         128,
@@ -60,7 +62,7 @@ def historical_prices_buy_signal() -> list[float]:
 
 @pytest.fixture
 def historical_prices_sell_signal() -> list[float]:
-    """Provides a list of historical prices that will trigger a SELL signal."""
+    """Provide a list of historical prices that will trigger a SELL signal."""
     return [
         70,
         72,
@@ -102,7 +104,8 @@ def historical_prices_sell_signal() -> list[float]:
 
 @pytest.fixture
 def alphabot_input_data_factory(base_portfolio_state: PortfolioState):
-    """Provides a factory for creating AlphaBotTaskPayload instances.
+    """Provide a factory for creating AlphaBotTaskPayload instances.
+
     Injects shared base model fixtures from the root conftest.
     """
 
@@ -135,7 +138,7 @@ def alphabot_input_data_factory(base_portfolio_state: PortfolioState):
 
 @pytest.fixture
 def alphabot_message_factory(alphabot_input_data_factory):
-    """Factory to create a complete A2A Message for AlphaBot tests using the common utility."""
+    """Create a complete A2A Message for AlphaBot tests using the common utility."""
 
     def _create_message(**kwargs) -> Message:
         # 1. Create the payload using the other factory
@@ -169,7 +172,8 @@ def mock_httpx_client() -> AsyncMock:
 def risk_check_tool(
     mock_httpx_client: AsyncMock,
 ) -> A2ARiskCheckTool:
-    """Provides an A2ARiskCheckTool instance with a mocked httpx_client
+    """Provide an A2ARiskCheckTool instance with a mocked httpx_client.
+
     for hermetic testing.
     """
     # The tool is now a real object, but its http client is a mock,

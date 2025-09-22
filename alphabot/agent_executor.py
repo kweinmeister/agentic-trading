@@ -1,3 +1,5 @@
+"""Agent Executor for the AlphaBot agent."""
+
 import logging
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -20,6 +22,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
     """Executes the AlphaBot ADK agent logic in response to A2A requests."""
 
     def __init__(self):
+        """Initialize the AlphaBotAgentExecutor."""
         self._adk_agent = alphabot_adk_agent
         self._adk_runner = Runner(
             app_name="alphabot_adk_runner",
@@ -30,8 +33,9 @@ class AlphaBotAgentExecutor(AgentExecutor):
         logger.info("AlphaBotAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """Receives a unified task payload, runs it through the ADK agent,
-        and returns the structured result in a standard Artifact.
+        """Receive a unified task payload, run it through the ADK agent.
+
+        And return the structured result in a standard Artifact.
         """
         outcome = TradeOutcome(
             status=TradeStatus.ERROR,
@@ -144,6 +148,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
             await event_queue.close()
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue):
+        """Cancel the agent execution."""
         logger.warning(
             f"Cancellation not implemented for synchronous AlphaBot ADK agent task: {context.task_id}",
         )

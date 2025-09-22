@@ -1,3 +1,5 @@
+"""Risk management rules for the RiskGuard agent."""
+
 import logging
 
 # Import defaults from the common config
@@ -16,11 +18,13 @@ def check_trade_risk_logic(
     max_pos_size: float = DEFAULT_RISKGUARD_MAX_POS_SIZE,  # Use imported default
     max_concentration: float = DEFAULT_RISKGUARD_MAX_CONCENTRATION,  # Use imported default
 ) -> RiskCheckResult:
-    """Encapsulates the risk checking logic, using provided limits.
+    """Encapsulate the risk checking logic, using provided limits.
 
     Args:
         trade_proposal: TradeProposal model instance.
         portfolio_state: PortfolioState model instance.
+        max_pos_size: The maximum position size for a single trade.
+        max_concentration: The maximum portfolio concentration.
 
     Returns:
         RiskCheckResult indicating approval status and reason.

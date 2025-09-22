@@ -1,3 +1,5 @@
+"""Tests for the RiskGuard agent executor."""
+
 from typing import Callable
 
 import pytest
@@ -11,7 +13,7 @@ from riskguard.agent_executor import RiskGuardAgentExecutor
 def riskguard_message_factory(
     riskguard_input_data_factory,
 ) -> Callable[..., Message]:
-    """Factory to create a complete A2A Message for RiskGuard tests."""
+    """Create a complete A2A Message for RiskGuard tests."""
 
     def _create_message(**kwargs) -> Message:
         input_data = riskguard_input_data_factory(**kwargs)
@@ -31,6 +33,7 @@ async def test_execute_success_approved(
     event_queue,
     adk_mock_riskguard_generator,
 ):
+    """Test the execute method for a successful approved trade."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
     # Arrange
@@ -75,6 +78,7 @@ async def test_execute_missing_trade_proposal(
     adk_mock_riskguard_generator,
     event_queue,
 ):
+    """Test the execute method with a missing trade proposal."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
     # Arrange
@@ -130,6 +134,7 @@ async def test_execute_adk_runner_exception(
     adk_mock_riskguard_generator,
     event_queue,
 ):
+    """Test the execute method with an ADK runner exception."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
     # Arrange
@@ -168,7 +173,8 @@ async def test_execute_handles_adk_runner_exception(
     mock_runner_factory,
     event_queue,
 ):
-    """Tests that if the ADK runner fails, the executor enqueues an error message
+    """Test that if the ADK runner fails, the executor enqueues an error message.
+
     and closes the queue.
     """
     # Arrange

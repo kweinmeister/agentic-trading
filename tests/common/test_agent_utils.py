@@ -1,3 +1,5 @@
+"""Tests for the agent utilities."""
+
 import json
 import os
 from unittest.mock import MagicMock, patch
@@ -10,13 +12,15 @@ from common.utils.agent_utils import get_service_url, parse_and_validate_input
 
 
 class MockModel(BaseModel):
+    """A mock Pydantic model for testing."""
+
     name: str
     value: int = Field(gt=0)
 
 
 @pytest.fixture
 def mock_ctx() -> InvocationContext:
-    """Provides a base InvocationContext."""
+    """Provide a base InvocationContext."""
     return MagicMock(spec=InvocationContext)
 
 

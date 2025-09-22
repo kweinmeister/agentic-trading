@@ -1,3 +1,5 @@
+"""Tests for the RiskGuard rules."""
+
 from common.models import PortfolioState, TradeProposal
 from riskguard.rules import check_trade_risk_logic
 
@@ -279,7 +281,8 @@ def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
 
 
 def test_risk_check_division_by_zero(riskguard_input_data_factory):
-    """Tests that check_trade_risk_logic handles a portfolio with a total value of
+    """Test that check_trade_risk_logic handles a portfolio with a total value of.
+
     zero gracefully, preventing a ZeroDivisionError.
     """
     input_data = riskguard_input_data_factory(

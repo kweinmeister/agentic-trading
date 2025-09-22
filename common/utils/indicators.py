@@ -1,8 +1,10 @@
+"""Indicator calculation utilities."""
+
 from typing import List, Optional
 
 
 def calculate_sma(prices: List[float], period: int) -> Optional[float]:
-    """Calculates the Simple Moving Average."""
+    """Calculate the Simple Moving Average."""
     if period <= 0:
         return None
     price_slice = prices[-period:]

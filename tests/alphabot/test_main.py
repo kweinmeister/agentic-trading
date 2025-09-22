@@ -1,3 +1,5 @@
+"""Tests for the AlphaBot CLI."""
+
 import os
 from unittest.mock import patch
 

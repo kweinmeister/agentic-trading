@@ -1,3 +1,5 @@
+"""Command-line interface for the AlphaBot agent."""
+
 import logging
 
 import click
@@ -35,7 +37,7 @@ logger = logging.getLogger(__name__)
     help="Enable proxy headers.",
 )
 def main(host: str, port: int, proxy_headers: bool):
-    """Runs the AlphaBot agent as an A2A server."""
+    """Run the AlphaBot agent as an A2A server."""
     logger.info("Configuring AlphaBot A2A server...")
 
     # Define the Agent Card for AlphaBot

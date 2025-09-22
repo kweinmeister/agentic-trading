@@ -1,3 +1,5 @@
+"""Agent Executor for the RiskGuard agent."""
+
 import json
 import logging
 from typing import Any
@@ -19,6 +21,7 @@ class RiskGuardAgentExecutor(AgentExecutor):
     """Executes the RiskGuard ADK agent logic in response to A2A requests."""
 
     def __init__(self):
+        """Initialize the RiskGuardAgentExecutor."""
         self._adk_agent = riskguard_adk_agent
         self._adk_runner = Runner(
             app_name="riskguard_adk_runner",
@@ -29,8 +32,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
         logger.info("RiskGuardAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """Receives a trade proposal, runs it through the ADK agent, and immediately
-        returns the result in a single Message event.
+        """Receive a trade proposal, run it through the ADK agent, and immediately.
+
+        Returns the result in a single Message event.
         """
         try:
             if not context.context_id:
@@ -169,6 +173,7 @@ class RiskGuardAgentExecutor(AgentExecutor):
             await event_queue.close()
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue):
+        """Cancel the agent execution."""
         # This synchronous agent has nothing to cancel.
         logger.warning("Cancel called on synchronous RiskGuard agent; nothing to do.")
         await event_queue.close()

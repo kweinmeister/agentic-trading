@@ -1,3 +1,5 @@
+"""Tests for the RiskGuard CLI."""
+
 import os
 from unittest.mock import patch
 

@@ -1,3 +1,5 @@
+"""Tests for the market data simulator."""
+
 import random
 
 from simulator.market import MarketDataSimulator

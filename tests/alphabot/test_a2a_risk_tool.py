@@ -1,3 +1,5 @@
+"""Tests for the A2A Risk Check Tool."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -37,7 +39,7 @@ def tool_context(adk_session: Session):
 
 
 def create_success_response_message(result_data: dict) -> Message:
-    """Helper to create a successful A2A Message response for mocking."""
+    """Create a successful A2A Message response for mocking."""
     risk_check_result = RiskCheckResult.model_validate(result_data)
     return Message(
         message_id="test-message-id",
@@ -52,7 +54,7 @@ def _verify_a2a_payload(
     mock_a2a_client: MagicMock,
     args: dict,
 ):
-    """Helper function to verify the payload sent to the A2AClient."""
+    """Verify the payload sent to the A2AClient."""
     # The new client sends the message directly, not wrapped in a request object
     mock_a2a_client.send_message.assert_called_once()
     sent_message: Message = mock_a2a_client.send_message.call_args[0][0]

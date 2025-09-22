@@ -1,4 +1,4 @@
-# tests/common/test_models.py
+"""Tests for the common data models."""
 
 import pytest
 from pydantic import ValidationError

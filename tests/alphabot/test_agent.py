@@ -1,3 +1,5 @@
+"""Tests for the AlphaBot agent."""
+
 import asyncio
 from unittest.mock import AsyncMock, patch
 
@@ -511,8 +513,9 @@ async def test_alphabot_does_not_repropose_rejected_trade(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """Tests that AlphaBot does not propose the same trade again immediately after
-    it has been rejected by RiskGuard. This test simulates the scenario where
+    """Test that AlphaBot does not propose the same trade again immediately after.
+
+    It has been rejected by RiskGuard. This test simulates the scenario where
     a BUY signal is generated, rejected, and then the agent is run again
     with the same market conditions.
     """
@@ -584,7 +587,8 @@ async def test_alphabot_does_not_repropose_rejected_trade(
 def test_determine_trade_proposal_rejects_sell_if_quantity_exceeds_shares(
     agent: AlphaBotAgent,
 ):
-    """Tests that _determine_trade_proposal for a SELL signal returns None if the
+    """Test that _determine_trade_proposal for a SELL signal returns None if the.
+
     configured trade_quantity exceeds the number of shares held.
     """
     portfolio_state = PortfolioState(cash=10000, shares=5, total_value=10500)
@@ -638,7 +642,8 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """Tests that if a BUY signal is generated but the agent is already long,
+    """Test that if a BUY signal is generated but the agent is already long.
+
     it produces a NO_ACTION outcome.
     """
     adk_ctx.session.state = {"should_be_long": True}  # Agent is already long
