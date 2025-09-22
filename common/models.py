@@ -1,4 +1,4 @@
-# common/models.py
+"""Data models for the agentic trading simulator."""
 
 from enum import Enum
 from typing import List, Literal, Optional
@@ -59,6 +59,7 @@ class RiskCheckResult(BaseModel):
 
 class AlphaBotTaskPayload(BaseModel):
     """A unified payload representing a single task for the AlphaBot agent.
+
     This is sent FROM the Simulator TO AlphaBot.
     """
 

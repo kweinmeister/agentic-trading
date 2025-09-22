@@ -1,3 +1,5 @@
+"""A2A Risk Check Tool for AlphaBot."""
+
 import logging
 import os
 import uuid
@@ -49,6 +51,7 @@ class A2ARiskCheckTool(BaseTool):
     _httpx_client: httpx.AsyncClient
 
     def __init__(self, **kwargs):
+        """Initialize the A2ARiskCheckTool."""
         # Pop custom arguments for this class before calling super()
         # Configure httpx.AsyncClient with the timeout
         self._httpx_client = kwargs.pop(
@@ -71,7 +74,8 @@ class A2ARiskCheckTool(BaseTool):
             logger.info("A2ARiskCheckTool httpx.AsyncClient closed.")
 
     def _get_declaration(self) -> genai_types.FunctionDeclaration:
-        """Returns the ADK FunctionDeclaration for this tool.
+        """Return the ADK FunctionDeclaration for this tool.
+
         This describes the tool's interface to an LLM if it were to be called by one.
         """
         return genai_types.FunctionDeclaration(
@@ -150,7 +154,7 @@ class A2ARiskCheckTool(BaseTool):
         )
 
     async def run_async(self, **kwargs: Any) -> Event:
-        """Makes the actual A2A HTTP call."""
+        """Make the actual A2A HTTP call."""
         tool_context: ToolContext = kwargs["tool_context"]
         args: Dict[str, Any] = kwargs["args"]
         invocation_id_short = tool_context.invocation_id[:8]

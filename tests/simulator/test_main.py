@@ -1,3 +1,5 @@
+"""Tests for the simulator's main application."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

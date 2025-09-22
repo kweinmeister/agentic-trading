@@ -75,7 +75,7 @@ static_dir = module_dir / "static"
 
 
 def format_currency(value: Optional[float]) -> str:
-    """Formats an optional float value as currency, using locale settings if possible."""
+    """Format an optional float value as currency, using locale settings if possible."""
     if value is None:
         return "N/A"
     try:
@@ -92,7 +92,7 @@ def format_currency(value: Optional[float]) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handles application startup and shutdown events, including locale setting."""
+    """Handle application startup and shutdown events, including locale setting."""
     logger.info("Simulator UI starting up...")
     locale_setting = "en_US.UTF-8"
     try:
@@ -122,7 +122,7 @@ def _create_results_figure(
     params: Dict[str, Any],
     trade_markers: Dict[str, List],
 ) -> go.Figure:
-    """Creates the Plotly figure for simulation results."""
+    """Create the Plotly figure for simulation results."""
     MARKER_SIZE = 10
     MARKER_LINE_WIDTH = 1
     APPROVED_COLOR = "lime"
@@ -319,11 +319,12 @@ class UILogHandler(logging.Handler):
     """Custom log handler to capture logs into a provided list for UI display."""
 
     def __init__(self, log_list: List[str]):
+        """Initialize the UILogHandler."""
         super().__init__()
         self._log_list = log_list
 
     def emit(self, record):
-        """Formats the record and appends it to the log list."""
+        """Format the record and append it to the log list."""
         log_entry = self.format(record)
         self._log_list.append(log_entry)
 
@@ -339,7 +340,7 @@ async def _call_alphabot_a2a(
     params: Dict[str, Any],
     sim_logger: logging.Logger,
 ) -> Dict[str, Any]:
-    """Prepares and sends a message to the AlphaBot A2A server for a given simulation day.
+    """Prepare and send a message to the AlphaBot A2A server for a given simulation day.
 
     Args:
         client_factory: The A2A ClientFactory instance.
@@ -468,7 +469,7 @@ async def _call_alphabot_a2a(
 
 
 async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
-    """Runs the trading simulation and collects results. Returns dict with results or error."""
+    """Run the trading simulation and collects results. Returns dict with results or error."""
     logger.info(f"--- Starting Simulation with params: {params} ---")
     sim_log_list: List[str] = []
     ui_log_handler = UILogHandler(sim_log_list)
@@ -754,7 +755,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request) -> HTMLResponse:
-    """Serves the main HTML page, passing simulation status and defaults."""
+    """Serve the main HTML page, passing simulation status and defaults."""
     logger.info("Serving root page.")
     template_context = {
         "request": request,
@@ -853,6 +854,7 @@ class SimulationRunParams(BaseModel):
     )
 
     def to_dict(self) -> Dict[str, Any]:
+        """Return a dictionary representation of the model."""
         # Convert concentration back to float 0.0-1.0 for internal use if needed,
         # but the agent/tool might expect it directly as passed by metadata.
         # For now, keep as is, ensure AlphaBot's tool handles the percentage if necessary.
@@ -864,7 +866,7 @@ def _render_error_page(
     error_message: str,
     form_values: Dict[str, Any],
 ) -> HTMLResponse:
-    """Helper function to render the main page with an error message."""
+    """Render the main page with an error message."""
     template_context = {
         "request": request,
         "status": {
@@ -920,7 +922,7 @@ async def handle_run_simulation(
         os.environ.get("ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL),
     ),  # Get from env or default
 ):
-    """Handles the simulation run request, validating parameters via Pydantic."""
+    """Handle the simulation run request, validating parameters via Pydantic."""
     # Note: We're removing the check for concurrent simulations as it was causing race conditions
     # with the global simulation_status dictionary. In a production environment, you might want
     # to implement a proper queuing mechanism or allow concurrent simulations with proper isolation.
@@ -1021,7 +1023,7 @@ async def handle_run_simulation(
 
 @app.get("/health")
 async def health_check():
-    """Simple health check endpoint."""
+    """Return a simple health check endpoint."""
     return {"status": "ok"}
 
 

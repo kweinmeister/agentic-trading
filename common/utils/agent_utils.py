@@ -1,3 +1,5 @@
+"""Agent utilities for the agentic trading simulator."""
+
 import logging
 import os
 from typing import Type, TypeVar
@@ -11,8 +13,10 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def get_service_url(env_var_name: str, host: str, port: int) -> str:
-    """Determines the service URL by checking an environment variable first,
-    then falling back to a host/port combination.
+    """Determine the service URL.
+
+    It checks an environment variable first, then falls back to a host/port
+    combination.
 
     Args:
         env_var_name: The name of the environment variable to check.
@@ -41,7 +45,7 @@ def parse_and_validate_input(
     payload_model: Type[T],
     agent_name: str,
 ) -> T | None:
-    """Parses and validates the input from the invocation context against a Pydantic model."""
+    """Parse and validate the input from the invocation context against a Pydantic model."""
     invocation_id_short = ctx.invocation_id[:8]
 
     # Correct way to access the input data from the InvocationContext

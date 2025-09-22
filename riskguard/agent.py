@@ -1,3 +1,5 @@
+"""RiskGuard ADK Agent."""
+
 import logging
 from collections.abc import AsyncGenerator
 
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class RiskGuardAgent(BaseAgent):
     """ADK Agent implementing the RiskGuard logic.
+
     Designed to be hosted via an A2A server.
     """
 
@@ -29,7 +32,7 @@ class RiskGuardAgent(BaseAgent):
         self,
         ctx: InvocationContext,
     ) -> AsyncGenerator[Event, None]:
-        """Processes a risk check request received via A2A (simulated via message content)."""
+        """Process a risk check request received via A2A (simulated via message content)."""
         invocation_id_short = ctx.invocation_id[:8]
         logger.info(
             f"[{self.name} ({invocation_id_short})] Received risk check invocation",

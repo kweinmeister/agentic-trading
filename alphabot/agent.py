@@ -1,3 +1,5 @@
+"""AlphaBot ADK Agent."""
+
 import logging
 import uuid
 from collections.abc import AsyncGenerator
@@ -22,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 class AlphaBotAgent(BaseAgent):
+    """ADK Agent implementing the AlphaBot trading logic."""
+
     ticker: Optional[str] = None
     tools: Optional[List[BaseTool]] = None
 
@@ -31,6 +35,7 @@ class AlphaBotAgent(BaseAgent):
         agent_name: str = "AlphaBot",
         **kwargs,
     ):
+        """Initialize the AlphaBotAgent."""
         a2a_tool = A2ARiskCheckTool()
         agent_description = (
             "AlphaBot agent using SMA crossover strategy with A2A risk checks."
@@ -51,7 +56,7 @@ class AlphaBotAgent(BaseAgent):
         long_period: int,
         invocation_id: str,
     ) -> tuple[float | None, float | None, float | None, float | None]:
-        """Calculates current and previous short/long SMAs."""
+        """Calculate current and previous short/long SMAs."""
         logger.debug(
             f"[{self.name} ({invocation_id[:8]})] Calculating indicators with "
             f"short_period={short_period}, long_period={long_period}. "
@@ -87,7 +92,7 @@ class AlphaBotAgent(BaseAgent):
         prev_sma_long: float | None,
         invocation_id: str,
     ) -> str | None:
-        """Generates BUY/SELL signal based on SMA crossover."""
+        """Generate BUY/SELL signal based on SMA crossover."""
         logger.debug(f"[{self.name} ({invocation_id[:8]})] Generating signal...")
         if (
             sma_short is None
@@ -138,7 +143,7 @@ class AlphaBotAgent(BaseAgent):
         trade_quantity: int,
         last_rejected_trade: Optional[dict],
     ) -> Optional[dict]:
-        """Determines the trade proposal based on signal and current state."""
+        """Determine the trade proposal based on signal and current state."""
         trade_proposal = None
         ticker = self.ticker or DEFAULT_TICKER
 
@@ -182,7 +187,7 @@ class AlphaBotAgent(BaseAgent):
         risk_params: dict,
         ctx: InvocationContext,
     ) -> dict | None:
-        """Calls the A2A Risk Check tool and returns the result."""
+        """Call the A2A Risk Check tool and returns the result."""
         invocation_id_short = ctx.invocation_id[:8]
         logger.info(
             f"[{self.name} ({invocation_id_short})] Performing A2A Risk Check for trade: {trade_proposal}",
@@ -270,7 +275,7 @@ class AlphaBotAgent(BaseAgent):
         signal: str,
         invocation_id: str,
     ) -> Event:
-        """Processes the risk check result and creates the final event with state_delta."""
+        """Process the risk check result and creates the final event with state_delta."""
         invocation_id_short = invocation_id[:8]
         logger.info(
             f"[{self.name} ({invocation_id_short})] Processing risk result={risk_result}, "

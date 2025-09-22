@@ -1,3 +1,5 @@
+"""Global fixtures for all tests."""
+
 from typing import Optional  # Import Optional
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +17,7 @@ from common.models import PortfolioState, TradeProposal
 
 @pytest.fixture
 def event_queue() -> EventQueue:
-    """Provides a new EventQueue instance for each test."""
+    """Provide a new EventQueue instance for each test."""
     return EventQueue()
 
 
@@ -46,7 +48,7 @@ def test_agent_card():
 
 @pytest_asyncio.fixture
 async def adk_session() -> Session:
-    """Provides a reusable, awaited session instance for tests."""
+    """Provide a reusable, awaited session instance for tests."""
     return await InMemorySessionService().create_session(
         app_name="test_app",
         user_id="test_user",
@@ -58,7 +60,7 @@ def adk_ctx(
     adk_session: Session,
     agent: Optional[BaseAgent] = None,
 ) -> InvocationContext:  # Use Optional
-    """Provides a base InvocationContext."""
+    """Provide a base InvocationContext."""
     # If no agent is provided, use a MagicMock to satisfy the BaseAgent type hint
     if agent is None:
         agent = MagicMock(spec=BaseAgent)
@@ -74,13 +76,13 @@ def adk_ctx(
 
 @pytest.fixture
 def base_portfolio_state() -> PortfolioState:
-    """Provides a default portfolio state, shared across all tests."""
+    """Provide a default portfolio state, shared across all tests."""
     return PortfolioState(cash=100000.0, shares=100, total_value=110000.0)
 
 
 @pytest.fixture
 def base_trade_proposal() -> TradeProposal:
-    """Provides a default 'BUY' trade proposal, shared across all tests."""
+    """Provide a default 'BUY' trade proposal, shared across all tests."""
     return TradeProposal(
         action="BUY",
         ticker="TECH",
@@ -91,7 +93,7 @@ def base_trade_proposal() -> TradeProposal:
 
 @pytest.fixture
 def mock_runner_factory():
-    """Factory fixture to create a mock Runner for a specific agent."""
+    """Create a mock Runner for a specific agent."""
 
     def _factory(agent_module_path: str):
         with patch(f"{agent_module_path}.Runner") as mock:
@@ -106,8 +108,10 @@ def mock_runner_factory():
 
 @pytest.fixture
 def adk_mock_alphabot_generator():
-    """Mocks the async generator for AlphaBot, yielding ADK Events instead of
-    raw genai types. This aligns with the behavior of the ADK Runner.
+    """Mock the async generator for the AlphaBot agent.
+
+    This fixture yields ADK `Event` objects, simulating the behavior of the
+    ADK Runner, which wraps raw genai types.
     """
 
     async def _generator(final_state_delta, final_reason):
@@ -142,8 +146,10 @@ def adk_mock_alphabot_generator():
 
 @pytest.fixture
 def adk_mock_riskguard_generator():
-    """Mocks the async generator for RiskGuard, yielding a single ADK Event
-    with a function response. This aligns with the behavior of the ADK Runner.
+    """Mock the async generator for the RiskGuard agent.
+
+    This fixture yields a single ADK `Event` containing a function response,
+    simulating the behavior of the ADK Runner for a tool-like agent.
     """
 
     async def _generator(result_name, result_data):
@@ -167,7 +173,7 @@ def adk_mock_riskguard_generator():
 
 @pytest.fixture
 def mock_a2a_send_message_generator():
-    """Helper fixture to create a mock async generator for a2a_client.send_message.
+    """Create a mock async generator for a2a_client.send_message.
 
     This fixture provides a function that can be used to configure an AsyncMock's
     send_message method to work properly with 'async for' loops.
@@ -221,7 +227,7 @@ def create_async_error_iterator(exception_class, *args, **kwargs):
 
 @pytest.fixture
 def mock_a2a_sdk_components():
-    """Mocks and patches the A2A SDK's ClientFactory and A2ACardResolver.
+    """Mock and patch the A2A SDK's ClientFactory and A2ACardResolver.
 
     This provides a hermetic environment for testing functions that make A2A calls,
     preventing real network requests. It returns a dictionary of the key mock

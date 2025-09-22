@@ -1,3 +1,5 @@
+"""Fixtures for RiskGuard tests."""
+
 import pytest
 
 from common.models import (
@@ -12,7 +14,8 @@ def riskguard_input_data_factory(
     base_trade_proposal: TradeProposal,
     base_portfolio_state: PortfolioState,
 ):
-    """Provides a factory for creating RiskCheckPayload instances for RiskGuard tests.
+    """Provide a factory for creating RiskCheckPayload instances for RiskGuard tests.
+
     Injects shared base model fixtures from the root conftest.
     """
 

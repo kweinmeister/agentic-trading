@@ -1,4 +1,5 @@
-# This file makes Python treat the 'tests' directory as a package.
+"""Tests for the agentic trading simulator."""
+
 import os
 import sys
 

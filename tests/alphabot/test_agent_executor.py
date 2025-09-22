@@ -1,3 +1,5 @@
+"""Tests for the AlphaBot agent executor."""
+
 from typing import Callable
 
 import pytest
@@ -11,7 +13,7 @@ from alphabot.agent_executor import AlphaBotAgentExecutor
 def alphabot_message_factory(
     alphabot_input_data_factory,
 ) -> Callable[..., Message]:
-    """Factory to create a complete A2A Message for AlphaBot tests."""
+    """Create a complete A2A Message for AlphaBot tests."""
 
     def _create_message(**kwargs) -> Message:
         input_data = alphabot_input_data_factory(**kwargs)
@@ -32,6 +34,7 @@ async def test_execute_success_buy_decision(
     event_queue,
     adk_mock_alphabot_generator,
 ):
+    """Test the execute method for a successful buy decision."""
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
     # Arrange
@@ -87,6 +90,7 @@ async def test_execute_success_buy_decision(
 
 @pytest.mark.asyncio
 async def test_execute_missing_market_data(mock_runner_factory, event_queue):
+    """Test the execute method with missing market data."""
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
     # Arrange
@@ -128,6 +132,7 @@ async def test_execute_adk_runner_exception(
     event_queue,
     adk_mock_alphabot_generator,
 ):
+    """Test the execute method with an ADK runner exception."""
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
     # Arrange
@@ -170,7 +175,8 @@ async def test_execute_handles_adk_runner_exception(
     mock_runner_factory,
     event_queue,
 ):
-    """Tests that if the ADK runner fails, the executor enqueues an error message
+    """Test that if the ADK runner fails, the executor enqueues an error message.
+
     and closes the queue.
     """
     # Arrange
@@ -210,8 +216,10 @@ async def test_execute_returns_dict_not_string(
     event_queue,
     adk_mock_alphabot_generator,
 ):
-    """Ensures the final `DataPart` contains a dictionary, not a JSON string.
-    This prevents a `ValidationError` at runtime.
+    """Ensure the final `DataPart` contains a dictionary, not a JSON string.
+
+    This test verifies that the data in the final `DataPart` is a Python
+    dictionary to prevent a `pydantic.ValidationError` at runtime.
     """
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 

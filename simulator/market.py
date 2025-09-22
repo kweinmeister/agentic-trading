@@ -15,7 +15,7 @@ class MarketDataSimulator:
         trend: float = 0.0005,
         history_size: int = 60,
     ):
-        """Initializes the market data simulator.
+        """Initialize the market data simulator.
 
         Args:
             initial_price: The starting price for the simulation.
@@ -32,7 +32,7 @@ class MarketDataSimulator:
         self.history.append(self.current_price)  # Start history with the initial price
 
     def _generate_and_add_price(self) -> None:
-        """Internal helper to generate the next price based on trend and volatility, and add it to history."""
+        """Generate the next price based on trend and volatility, and add it to history."""
         change_pct = random.normalvariate(self.trend, self.volatility)
         self.current_price *= 1 + change_pct
         self.current_price = max(
@@ -42,14 +42,14 @@ class MarketDataSimulator:
         self.history.append(self.current_price)
 
     def next_price(self) -> float:
-        """Generates, stores, and returns the next market price."""
+        """Generate, store, and return the next market price."""
         self._generate_and_add_price()
         return self.current_price
 
     def get_historical_prices(self) -> List[float]:
-        """Returns the current list of historical prices."""
+        """Return the current list of historical prices."""
         return list(self.history)
 
     def get_current_price(self) -> float:
-        """Returns the most recently generated price."""
+        """Return the most recently generated price."""
         return self.current_price

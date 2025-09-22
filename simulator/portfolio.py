@@ -1,3 +1,5 @@
+"""Portfolio state and trade action models for the trading simulator."""
+
 import locale
 import logging
 from dataclasses import dataclass
@@ -7,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 class TradeAction(Enum):
+    """Enum for trade actions."""
+
     BUY = auto()
     SELL = auto()
 
@@ -21,7 +25,7 @@ class PortfolioState:
     total_value: float = 100_000.0
 
     def _format_currency(self, value: float) -> str:
-        """Internal helper to format currency using locale, with fallback."""
+        """Format currency using locale, with fallback."""
         try:
             # Attempt to use locale formatting (assuming locale set elsewhere)
             # Set locale temporarily if needed, or ensure it's set globally.
@@ -35,12 +39,12 @@ class PortfolioState:
             return f"${value:,.2f}"  # Basic fallback format
 
     def update_valuation(self, current_price: float):
-        """Updates holding and total values based on the current price."""
+        """Update holding and total values based on the current price."""
         self.holdings_value = self.shares * current_price
         self.total_value = self.cash + self.holdings_value
 
     def execute_trade(self, action: TradeAction, quantity: int, price: float) -> bool:
-        """Applies a trade to the portfolio state using TradeAction enum."""
+        """Apply a trade to the portfolio state using TradeAction enum."""
         price_f = self._format_currency(price)
 
         if action == TradeAction.BUY:
@@ -73,7 +77,7 @@ class PortfolioState:
         return False  # Should not be reached if using the enum correctly
 
     def __str__(self):
-        """Returns a locale-formatted string representation of the portfolio."""
+        """Return a locale-formatted string representation of the portfolio."""
         cash_f = self._format_currency(self.cash)
         holdings_f = self._format_currency(self.holdings_value)
         total_f = self._format_currency(self.total_value)

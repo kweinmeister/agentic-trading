@@ -1,3 +1,5 @@
+"""Tests for the RiskGuard agent."""
+
 import asyncio
 
 import pytest
@@ -10,7 +12,7 @@ from riskguard.agent import RiskGuardAgent
 
 @pytest.fixture
 def agent() -> RiskGuardAgent:
-    """Provides a RiskGuardAgent instance."""
+    """Provide a RiskGuardAgent instance."""
     return RiskGuardAgent()
 
 
