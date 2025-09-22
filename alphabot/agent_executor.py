@@ -4,7 +4,6 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import DataPart, Part
 from a2a.utils.message import new_agent_parts_message
-from common.models import AlphaBotTaskPayload, TradeOutcome, TradeStatus
 from google.adk import Runner
 from google.adk.memory import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService, Session
@@ -12,6 +11,7 @@ from google.genai import types as genai_types
 from pydantic import ValidationError
 
 from alphabot.agent import root_agent as alphabot_adk_agent
+from common.models import AlphaBotTaskPayload, TradeOutcome, TradeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +30,12 @@ class AlphaBotAgentExecutor(AgentExecutor):
         logger.info("AlphaBotAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """
-        Receives a unified task payload, runs it through the ADK agent,
+        """Receives a unified task payload, runs it through the ADK agent,
         and returns the structured result in a standard Artifact.
         """
         outcome = TradeOutcome(
-            status=TradeStatus.ERROR, reason="Initialization failed."
+            status=TradeStatus.ERROR,
+            reason="Initialization failed.",
         )
         try:
             # 1. Simplified Payload Parsing
@@ -52,7 +52,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
             validated_payload = AlphaBotTaskPayload.model_validate(part.data)
             agent_input_json = validated_payload.model_dump_json()
             adk_content = genai_types.Content(
-                parts=[genai_types.Part(text=agent_input_json)]
+                parts=[genai_types.Part(text=agent_input_json)],
             )
 
             # Ensure ADK Session Exists
@@ -86,7 +86,8 @@ class AlphaBotAgentExecutor(AgentExecutor):
                     captured_state_delta.update(event.actions.state_delta)
                 if event.is_final_response() and event.content and event.content.parts:
                     text_part = next(
-                        (p for p in event.content.parts if hasattr(p, "text")), None
+                        (p for p in event.content.parts if hasattr(p, "text")),
+                        None,
                     )
                     if text_part:
                         final_reason_text = text_part.text
@@ -102,7 +103,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
                     "status": TradeStatus.REJECTED,
                     "reason": final_reason_text,
                     "trade_proposal": captured_state_delta.get(
-                        "rejected_trade_proposal"
+                        "rejected_trade_proposal",
                     ),
                 }
             else:
@@ -130,7 +131,8 @@ class AlphaBotAgentExecutor(AgentExecutor):
         except Exception as e:
             logger.exception(f"An unexpected error occurred: {e}")
             outcome = TradeOutcome(
-                status=TradeStatus.ERROR, reason="An unexpected server error occurred."
+                status=TradeStatus.ERROR,
+                reason="An unexpected server error occurred.",
             )
             final_message = new_agent_parts_message(
                 parts=[Part(root=DataPart(data=outcome.model_dump()))],
@@ -143,6 +145,6 @@ class AlphaBotAgentExecutor(AgentExecutor):
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue):
         logger.warning(
-            f"Cancellation not implemented for synchronous AlphaBot ADK agent task: {context.task_id}"
+            f"Cancellation not implemented for synchronous AlphaBot ADK agent task: {context.task_id}",
         )
         await event_queue.close()

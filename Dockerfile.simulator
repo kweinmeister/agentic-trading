@@ -20,4 +20,4 @@ COPY simulator/ ./simulator/
 
 # Command to run the Simulator UI (FastAPI) using uvicorn
 # Use sh -c to ensure $PORT is expanded by the shell
-CMD ["sh", "-c", "uvicorn simulator.main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "uvicorn simulator.main:app --host 0.0.0.0 --port $PORT --proxy-headers"]

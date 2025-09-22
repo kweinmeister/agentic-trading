@@ -19,7 +19,10 @@ def test_portfolio_state_custom_initialization():
     total_value = 55000.0
 
     portfolio = PortfolioState(
-        cash=cash, shares=shares, holdings_value=holdings_value, total_value=total_value
+        cash=cash,
+        shares=shares,
+        holdings_value=holdings_value,
+        total_value=total_value,
     )
 
     assert portfolio.cash == cash

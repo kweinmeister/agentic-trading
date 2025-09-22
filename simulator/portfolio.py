@@ -30,7 +30,7 @@ class PortfolioState:
         except Exception as e:
             # Broad exception catch for any locale or formatting issues
             logger.warning(
-                f"Locale currency formatting failed (value: {value}): {e}. Using fallback."
+                f"Locale currency formatting failed (value: {value}): {e}. Using fallback.",
             )
             return f"${value:,.2f}"  # Basic fallback format
 
@@ -49,7 +49,7 @@ class PortfolioState:
                 cost_f = self._format_currency(cost)
                 cash_f = self._format_currency(self.cash)
                 logger.warning(
-                    f"Attempted BUY overdraft. Need: {cost_f}, Have: {cash_f}"
+                    f"Attempted BUY overdraft. Need: {cost_f}, Have: {cash_f}",
                 )
                 return False
             self.cash -= cost
@@ -57,10 +57,10 @@ class PortfolioState:
             self.update_valuation(price)  # Update valuation after successful trade
             logger.info(f"Executed: BUY {quantity} @ {price_f}")
             return True
-        elif action == TradeAction.SELL:
+        if action == TradeAction.SELL:
             if quantity > self.shares:
                 logger.warning(
-                    f"Attempted SELL more shares than held. Have: {self.shares}, Want: {quantity}"
+                    f"Attempted SELL more shares than held. Have: {self.shares}, Want: {quantity}",
                 )
                 return False
             self.cash += quantity * price

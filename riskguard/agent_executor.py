@@ -29,8 +29,7 @@ class RiskGuardAgentExecutor(AgentExecutor):
         logger.info("RiskGuardAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """
-        Receives a trade proposal, runs it through the ADK agent, and immediately
+        """Receives a trade proposal, runs it through the ADK agent, and immediately
         returns the result in a single Message event.
         """
         try:
@@ -49,18 +48,18 @@ class RiskGuardAgentExecutor(AgentExecutor):
                 or "portfolio_state" not in agent_input_data
             ):
                 raise ValueError(
-                    "Missing 'trade_proposal' or 'portfolio_state' in data payload"
+                    "Missing 'trade_proposal' or 'portfolio_state' in data payload",
                 )
 
             agent_input_json = json.dumps(agent_input_data)
             adk_content = genai_types.Content(
-                parts=[genai_types.Part(text=agent_input_json)]
+                parts=[genai_types.Part(text=agent_input_json)],
             )
 
             # Ensure ADK Session Exists
             session_id_for_adk = context.context_id
             logger.info(
-                f"Task {context.task_id}: Attempting to get/create ADK session for session_id: '{session_id_for_adk}'"
+                f"Task {context.task_id}: Attempting to get/create ADK session for session_id: '{session_id_for_adk}'",
             )
 
             session: Session | None = None
@@ -73,13 +72,13 @@ class RiskGuardAgentExecutor(AgentExecutor):
                     )
                 except Exception as e_get:
                     logger.exception(
-                        f"Task {context.task_id}: Exception during ADK session get_session for session_id '{session_id_for_adk}': {e_get}"
+                        f"Task {context.task_id}: Exception during ADK session get_session for session_id '{session_id_for_adk}': {e_get}",
                     )
                     session = None
 
                 if not session:
                     logger.info(
-                        f"Task {context.task_id}: ADK Session not found or failed to get for '{session_id_for_adk}'. Creating new session."
+                        f"Task {context.task_id}: ADK Session not found or failed to get for '{session_id_for_adk}'. Creating new session.",
                     )
                     try:
                         session = await self._adk_runner.session_service.create_session(
@@ -90,30 +89,30 @@ class RiskGuardAgentExecutor(AgentExecutor):
                         )
                         if session:
                             logger.info(
-                                f"Task {context.task_id}: Successfully created ADK session '{session.id if hasattr(session, 'id') else 'ID_NOT_FOUND'}'."
+                                f"Task {context.task_id}: Successfully created ADK session '{session.id if hasattr(session, 'id') else 'ID_NOT_FOUND'}'.",
                             )
                         else:
                             logger.error(
-                                f"Task {context.task_id}: ADK InMemorySessionService.create_session returned None for session_id '{session_id_for_adk}'."
+                                f"Task {context.task_id}: ADK InMemorySessionService.create_session returned None for session_id '{session_id_for_adk}'.",
                             )
                     except Exception as e_create:
                         logger.exception(
-                            f"Task {context.task_id}: Exception during ADK session create_session for session_id '{session_id_for_adk}': {e_create}"
+                            f"Task {context.task_id}: Exception during ADK session create_session for session_id '{session_id_for_adk}': {e_create}",
                         )
                         session = None
                 else:
                     logger.info(
-                        f"Task {context.task_id}: Found existing ADK session '{session.id if hasattr(session, 'id') else 'ID_NOT_FOUND'}'."
+                        f"Task {context.task_id}: Found existing ADK session '{session.id if hasattr(session, 'id') else 'ID_NOT_FOUND'}'.",
                     )
             else:
                 logger.error(
-                    f"Task {context.task_id}: ADK session_id (context.context_id) is None or empty. Cannot initialize ADK session."
+                    f"Task {context.task_id}: ADK session_id (context.context_id) is None or empty. Cannot initialize ADK session.",
                 )
 
             if not session:
                 error_message_text = f"Failed to establish ADK session. session_id was '{session_id_for_adk}'."
                 logger.error(
-                    f"Task {context.task_id}: {error_message_text} Cannot proceed with ADK run."
+                    f"Task {context.task_id}: {error_message_text} Cannot proceed with ADK run.",
                 )
                 raise ConnectionError(error_message_text)
 
@@ -157,9 +156,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
                             data={
                                 "approved": False,
                                 "reason": f"An internal error occurred: {e}",
-                            }
-                        )
-                    )
+                            },
+                        ),
+                    ),
                 ],
                 context_id=context.context_id,
                 task_id=context.task_id,

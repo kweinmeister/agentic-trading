@@ -1,11 +1,11 @@
-import pytest
 import asyncio
 
+import pytest
 from google.adk.agents.invocation_context import InvocationContext
 from google.genai import types as genai_types
 
-from riskguard.agent import RiskGuardAgent
 from common.models import TradeProposal
+from riskguard.agent import RiskGuardAgent
 
 
 @pytest.fixture
@@ -25,7 +25,9 @@ def test_riskguard_agent_instantiation(agent: RiskGuardAgent):
 
 @pytest.mark.asyncio
 async def test_riskguard_run_async_impl_concurrent_requests(
-    agent, adk_ctx: InvocationContext, riskguard_input_data_factory
+    agent,
+    adk_ctx: InvocationContext,
+    riskguard_input_data_factory,
 ):
     """Tests _run_async_impl handles multiple concurrent requests."""
 
@@ -37,10 +39,10 @@ async def test_riskguard_run_async_impl_concurrent_requests(
                 quantity=100,
                 price=50.0,
                 ticker=f"GENERIC_STOCK_{check_id}",
-            )
+            ),
         )
         ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
         events = []
         async for event in agent._run_async_impl(ctx):

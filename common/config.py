@@ -1,7 +1,5 @@
 # common/config.py
-"""
-Central configuration file for default parameters.
-"""
+"""Central configuration file for default parameters."""
 
 # --- RiskGuard Defaults ---
 DEFAULT_RISKGUARD_PORT: int = 8080

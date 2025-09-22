@@ -1,12 +1,13 @@
-import pytest
-from alphabot.agent import AlphaBotAgent
-from common.models import AlphaBotTaskPayload, PortfolioState
-from common.utils.agent_utils import create_a2a_message_from_payload
-from a2a.types import Message, Role
+import uuid
 from unittest.mock import AsyncMock
+
 import httpx
+import pytest
+from a2a.types import DataPart, Message, Part, Role
 
 from alphabot.a2a_risk_tool import A2ARiskCheckTool
+from alphabot.agent import AlphaBotAgent
+from common.models import AlphaBotTaskPayload, PortfolioState
 
 
 @pytest.fixture
@@ -101,8 +102,7 @@ def historical_prices_sell_signal() -> list[float]:
 
 @pytest.fixture
 def alphabot_input_data_factory(base_portfolio_state: PortfolioState):
-    """
-    Provides a factory for creating AlphaBotTaskPayload instances.
+    """Provides a factory for creating AlphaBotTaskPayload instances.
     Injects shared base model fixtures from the root conftest.
     """
 
@@ -143,7 +143,13 @@ def alphabot_message_factory(alphabot_input_data_factory):
 
         # 2. Use the existing utility to create the message
         # This ensures the test uses the same logic as the application
-        a2a_message = create_a2a_message_from_payload(input_data, role=Role.user)
+        a2a_message = Message(
+            message_id=f"msg-{uuid.uuid4().hex[:8]}",
+            role=Role.user,
+            parts=[
+                Part(root=DataPart(data=input_data)),
+            ],
+        )
 
         # You can still override generated fields if needed for specific tests
         a2a_message.context_id = kwargs.get("context_id", a2a_message.context_id)
@@ -163,8 +169,7 @@ def mock_httpx_client() -> AsyncMock:
 def risk_check_tool(
     mock_httpx_client: AsyncMock,
 ) -> A2ARiskCheckTool:
-    """
-    Provides an A2ARiskCheckTool instance with a mocked httpx_client
+    """Provides an A2ARiskCheckTool instance with a mocked httpx_client
     for hermetic testing.
     """
     # The tool is now a real object, but its http client is a mock,

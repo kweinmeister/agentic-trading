@@ -1,7 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
-from alphabot.a2a_risk_tool import A2ARiskCheckTool
-from alphabot.agent import AlphaBotAgent
+
+import pytest
 from a2a.client import (
     A2AClientHTTPError,
     A2AClientTimeoutError,
@@ -13,10 +12,13 @@ from a2a.types import (
     Part,
     Role,
 )
-from google.adk.tools import ToolContext
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.sessions import Session
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
+from google.adk.tools import ToolContext
+
+from alphabot.a2a_risk_tool import A2ARiskCheckTool
+from alphabot.agent import AlphaBotAgent
 from common.models import RiskCheckResult
 from tests.conftest import create_async_error_iterator
 
@@ -30,7 +32,7 @@ def tool_context(adk_session: Session):
             session=adk_session,
             agent=AlphaBotAgent(),
             session_service=InMemorySessionService(),
-        )
+        ),
     )
 
 
@@ -92,7 +94,7 @@ async def test_run_async_approved(
 
     # Configure the mock client's send_message to be an async generator function.
     mock_send_message = mock_a2a_send_message_generator(
-        create_success_response_message(expected_result)
+        create_success_response_message(expected_result),
     )
 
     # Replace the send_message method directly with our async generator
@@ -141,7 +143,7 @@ async def test_run_async_rejected(
 
     # Configure the mock client's send_message to be an async generator function.
     mock_send_message = mock_a2a_send_message_generator(
-        create_success_response_message(expected_result)
+        create_success_response_message(expected_result),
     )
 
     # Replace the send_message method directly with our async generator
@@ -254,7 +256,8 @@ async def test_run_async_a2a_client_timeout(
 
     # Replace the send_message method with our error iterator using the helper function
     mock_a2a_client.send_message = lambda *args, **kwargs: create_async_error_iterator(
-        A2AClientTimeoutError, "Request timed out"
+        A2AClientTimeoutError,
+        "Request timed out",
     )
 
     # Act
@@ -296,7 +299,9 @@ async def test_run_async_a2a_http_error(
 
     # Replace the send_message method with our error iterator using the helper function
     mock_a2a_client.send_message = lambda *args, **kwargs: create_async_error_iterator(
-        A2AClientHTTPError, message="Service Unavailable", status_code=503
+        A2AClientHTTPError,
+        message="Service Unavailable",
+        status_code=503,
     )
 
     # Act
@@ -314,19 +319,6 @@ async def test_run_async_a2a_http_error(
         "A2A Network/HTTP Error: 503 - Service Unavailable. Is RiskGuard running?"
         in response_data["reason"]
     )
-
-
-@pytest.mark.asyncio
-async def test_run_async_json_rpc_error(
-    risk_check_tool: A2ARiskCheckTool,
-    tool_context: ToolContext,
-    mock_a2a_sdk_components,
-):
-    """Tests that the tool handles a JSONRPCErrorResponse from RiskGuard."""
-    # This test is no longer relevant as the new client handles errors differently.
-    # The new client will raise an A2AClientJSONRPCError, which is handled by the
-    # generic exception handler. We can add a new test for that.
-    pass
 
 
 @pytest.mark.asyncio
@@ -353,7 +345,8 @@ async def test_run_async_transport_resolution_error(
     # Mock the agent card resolution to raise an A2AClientHTTPError
     error_message = "Could not resolve agent card"
     mock_resolver_instance_risk_tool.get_agent_card.side_effect = A2AClientHTTPError(
-        message=error_message, status_code=503
+        message=error_message,
+        status_code=503,
     )
 
     # Act

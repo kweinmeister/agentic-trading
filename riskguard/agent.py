@@ -1,12 +1,13 @@
 import logging
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
-from common.models import RiskCheckPayload
-from common.utils.agent_utils import parse_and_validate_input
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event
 from google.genai import types as genai_types
+
+from common.models import RiskCheckPayload
+from common.utils.agent_utils import parse_and_validate_input
 
 from .rules import (
     RiskCheckResult,
@@ -17,8 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class RiskGuardAgent(BaseAgent):
-    """
-    ADK Agent implementing the RiskGuard logic.
+    """ADK Agent implementing the RiskGuard logic.
     Designed to be hosted via an A2A server.
     """
 
@@ -26,14 +26,13 @@ class RiskGuardAgent(BaseAgent):
     description: str = "Evaluates proposed trades against predefined risk rules."
 
     async def _run_async_impl(
-        self, ctx: InvocationContext
+        self,
+        ctx: InvocationContext,
     ) -> AsyncGenerator[Event, None]:
-        """
-        Processes a risk check request received via A2A (simulated via message content).
-        """
+        """Processes a risk check request received via A2A (simulated via message content)."""
         invocation_id_short = ctx.invocation_id[:8]
         logger.info(
-            f"[{self.name} ({invocation_id_short})] Received risk check invocation"
+            f"[{self.name} ({invocation_id_short})] Received risk check invocation",
         )
 
         validated_input = parse_and_validate_input(ctx, RiskCheckPayload, self.name)
@@ -46,7 +45,7 @@ class RiskGuardAgent(BaseAgent):
         else:
             try:
                 logger.info(
-                    f"[{self.name} ({invocation_id_short})] Successfully parsed and validated input: {validated_input.model_dump_json(indent=2)}"
+                    f"[{self.name} ({invocation_id_short})] Successfully parsed and validated input: {validated_input.model_dump_json(indent=2)}",
                 )
 
                 result: RiskCheckResult = check_trade_risk_logic(
@@ -68,7 +67,7 @@ class RiskGuardAgent(BaseAgent):
                 }
 
         logger.info(
-            f"[{self.name} ({invocation_id_short})] Yielding result: {result_dict}"
+            f"[{self.name} ({invocation_id_short})] Yielding result: {result_dict}",
         )
         yield Event(
             author=self.name,
@@ -78,14 +77,14 @@ class RiskGuardAgent(BaseAgent):
                         function_response=genai_types.FunctionResponse(
                             name="risk_check_result",  # This name is used by AgentExecutor to extract the result
                             response=result_dict,
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,  # RiskGuard is a single-turn agent for each request
         )
         logger.info(
-            f"[{self.name} ({invocation_id_short})] Risk check invocation processed and result yielded."
+            f"[{self.name} ({invocation_id_short})] Risk check invocation processed and result yielded.",
         )
 
 

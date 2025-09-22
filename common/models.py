@@ -1,16 +1,17 @@
 # common/models.py
 
-from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
 from enum import Enum
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, Field
 
 # --- Import Defaults from config.py ---
 from .config import (
-    DEFAULT_RISKGUARD_MAX_POS_SIZE,
-    DEFAULT_RISKGUARD_MAX_CONCENTRATION,
-    DEFAULT_ALPHABOT_SHORT_SMA,
     DEFAULT_ALPHABOT_LONG_SMA,
+    DEFAULT_ALPHABOT_SHORT_SMA,
     DEFAULT_ALPHABOT_TRADE_QTY,
+    DEFAULT_RISKGUARD_MAX_CONCENTRATION,
+    DEFAULT_RISKGUARD_MAX_POS_SIZE,
     DEFAULT_RISKGUARD_URL,
 )
 
@@ -57,8 +58,7 @@ class RiskCheckResult(BaseModel):
 
 
 class AlphaBotTaskPayload(BaseModel):
-    """
-    A unified payload representing a single task for the AlphaBot agent.
+    """A unified payload representing a single task for the AlphaBot agent.
     This is sent FROM the Simulator TO AlphaBot.
     """
 
@@ -88,9 +88,7 @@ class TradeStatus(str, Enum):
 
 
 class TradeOutcome(BaseModel):
-    """
-    Standardized response FROM the AlphaBot agent back to the calling client (Simulator).
-    """
+    """Standardized response FROM the AlphaBot agent back to the calling client (Simulator)."""
 
     status: TradeStatus
     reason: str

@@ -30,14 +30,18 @@ def test_alphabot_agent_instantiation():
 
 @pytest.mark.asyncio
 async def test_alphabot_run_async_impl_no_signal(
-    agent: AlphaBotAgent, adk_ctx: InvocationContext, alphabot_input_data_factory
+    agent: AlphaBotAgent,
+    adk_ctx: InvocationContext,
+    alphabot_input_data_factory,
 ):
     """Tests _run_async_impl when no crossover signal is generated."""
     adk_ctx.session.state = {"should_be_long": False}
 
     # Mock the A2ARiskCheckTool's run_async method
     with patch.object(
-        A2ARiskCheckTool, "run_async", new_callable=AsyncMock
+        A2ARiskCheckTool,
+        "run_async",
+        new_callable=AsyncMock,
     ) as mock_run_async:
 
         async def mock_tool_response(*args, **kwargs):
@@ -55,7 +59,7 @@ async def test_alphabot_run_async_impl_no_signal(
             day=1,
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -92,9 +96,9 @@ async def test_alphabot_run_async_impl_buy_approved(
                                 "approved": True,
                                 "reason": "Trade adheres to risk rules.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -106,7 +110,7 @@ async def test_alphabot_run_async_impl_buy_approved(
             portfolio_state={"cash": 10000, "shares": 0, "total_value": 10000},
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -152,9 +156,9 @@ async def test_alphabot_run_async_impl_sell_approved(
                                 "approved": True,
                                 "reason": "Trade adheres to risk rules.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -166,7 +170,7 @@ async def test_alphabot_run_async_impl_sell_approved(
             day=35,
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -197,7 +201,11 @@ async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent):
     prev_sma_short = 102.0
     prev_sma_long = 101.0
     signal = agent._generate_signal(
-        sma_short, sma_long, prev_sma_short, prev_sma_long, "test_invocation"
+        sma_short,
+        sma_long,
+        prev_sma_short,
+        prev_sma_long,
+        "test_invocation",
     )
     assert signal == "SELL"
 
@@ -247,9 +255,9 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
                                 "approved": True,
                                 "reason": "Trade adheres to risk rules.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -261,7 +269,7 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
             day=35,
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -278,11 +286,12 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
 
 @pytest.mark.asyncio
 async def test_alphabot_run_async_impl_invalid_input(
-    agent: AlphaBotAgent, adk_ctx: InvocationContext
+    agent: AlphaBotAgent,
+    adk_ctx: InvocationContext,
 ):
     """Tests that the agent handles malformed input data gracefully."""
     adk_ctx.user_content = genai_types.Content(
-        parts=[genai_types.Part(text="not a valid json")]
+        parts=[genai_types.Part(text="not a valid json")],
     )
 
     events = []
@@ -320,9 +329,9 @@ async def test_alphabot_run_async_impl_buy_rejected(
                                 "approved": False,
                                 "reason": "Exceeds max position size.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -334,7 +343,7 @@ async def test_alphabot_run_async_impl_buy_rejected(
             portfolio_state={"cash": 10000, "shares": 0, "total_value": 10000},
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -400,9 +409,9 @@ async def test_alphabot_run_async_impl_state_correction_sell_no_shares(
                                 "approved": True,
                                 "reason": "Trade adheres to risk rules.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -418,7 +427,7 @@ async def test_alphabot_run_async_impl_state_correction_sell_no_shares(
             day=35,
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         events = []
@@ -457,9 +466,9 @@ async def test_alphabot_concurrency(
                                 "approved": True,
                                 "reason": "Trade adheres to risk rules.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -471,7 +480,7 @@ async def test_alphabot_concurrency(
             portfolio_state={"cash": 10000, "shares": 0, "total_value": 10000},
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         async def run_agent_and_collect_events():
@@ -502,8 +511,7 @@ async def test_alphabot_does_not_repropose_rejected_trade(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """
-    Tests that AlphaBot does not propose the same trade again immediately after
+    """Tests that AlphaBot does not propose the same trade again immediately after
     it has been rejected by RiskGuard. This test simulates the scenario where
     a BUY signal is generated, rejected, and then the agent is run again
     with the same market conditions.
@@ -524,9 +532,9 @@ async def test_alphabot_does_not_repropose_rejected_trade(
                                 "approved": False,
                                 "reason": "Insufficient cash for BUY.",
                             },
-                        )
-                    )
-                ]
+                        ),
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -539,7 +547,7 @@ async def test_alphabot_does_not_repropose_rejected_trade(
             portfolio_state={"cash": 100, "shares": 0, "total_value": 100},
         )
         adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())]
+            parts=[genai_types.Part(text=input_data.model_dump_json())],
         )
 
         # --- First Invocation: Propose and get rejected ---
@@ -576,8 +584,7 @@ async def test_alphabot_does_not_repropose_rejected_trade(
 def test_determine_trade_proposal_rejects_sell_if_quantity_exceeds_shares(
     agent: AlphaBotAgent,
 ):
-    """
-    Tests that _determine_trade_proposal for a SELL signal returns None if the
+    """Tests that _determine_trade_proposal for a SELL signal returns None if the
     configured trade_quantity exceeds the number of shares held.
     """
     portfolio_state = PortfolioState(cash=10000, shares=5, total_value=10500)
@@ -595,7 +602,9 @@ def test_determine_trade_proposal_rejects_sell_if_quantity_exceeds_shares(
 
 @pytest.mark.asyncio
 async def test_alphabot_run_async_impl_insufficient_data(
-    agent: AlphaBotAgent, adk_ctx: InvocationContext, alphabot_input_data_factory
+    agent: AlphaBotAgent,
+    adk_ctx: InvocationContext,
+    alphabot_input_data_factory,
 ):
     """Tests that the agent handles insufficient historical data gracefully."""
     adk_ctx.session.state = {"should_be_long": False}
@@ -608,7 +617,7 @@ async def test_alphabot_run_async_impl_insufficient_data(
         day=1,
     )
     adk_ctx.user_content = genai_types.Content(
-        parts=[genai_types.Part(text=input_data.model_dump_json())]
+        parts=[genai_types.Part(text=input_data.model_dump_json())],
     )
 
     events = []
@@ -629,8 +638,7 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """
-    Tests that if a BUY signal is generated but the agent is already long,
+    """Tests that if a BUY signal is generated but the agent is already long,
     it produces a NO_ACTION outcome.
     """
     adk_ctx.session.state = {"should_be_long": True}  # Agent is already long
@@ -642,7 +650,7 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
         portfolio_state={"cash": 10000, "shares": 10, "total_value": 11290},
     )
     adk_ctx.user_content = genai_types.Content(
-        parts=[genai_types.Part(text=input_data.model_dump_json())]
+        parts=[genai_types.Part(text=input_data.model_dump_json())],
     )
 
     events = []

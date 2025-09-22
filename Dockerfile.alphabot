@@ -20,4 +20,4 @@ COPY alphabot/ ./alphabot/
 
 # Command to run the AlphaBot A2A server using module execution
 # Use sh -c to ensure $PORT is expanded by the shell
-CMD ["sh", "-c", "python -m alphabot --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "python -m alphabot --host 0.0.0.0 --port $PORT --proxy-headers"]

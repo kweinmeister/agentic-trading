@@ -57,7 +57,7 @@ gcloud builds submit . --config=$RISKGUARD_BUILDFILE \
     --substitutions=_REGION=$REGION,_REPO_NAME=$REPOSITORY_NAME \
     --project=$PROJECT_ID --quiet # Pass substitutions
 
-# Step 1.2: Deploy to Cloud Run using the built image tag
+# Step 1.2: Deploy to Cloud Run (Pass 1 - to get the URL)
 echo "Deploying RiskGuard service ($RISKGUARD_SERVICE_NAME)..."
 gcloud run deploy $RISKGUARD_SERVICE_NAME \
     --image=$RISKGUARD_IMAGE_TAG \
@@ -69,6 +69,14 @@ gcloud run deploy $RISKGUARD_SERVICE_NAME \
 # Step 1.3: Get Service URL
 export RISKGUARD_SERVICE_URL=$(gcloud run services describe $RISKGUARD_SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project=$PROJECT_ID)
 echo "RiskGuard URL: $RISKGUARD_SERVICE_URL"
+
+# Step 1.4: Update service with its own public URL (Pass 2)
+echo "Updating RiskGuard service ($RISKGUARD_SERVICE_NAME) with its public URL..."
+gcloud run services update $RISKGUARD_SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --update-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL" \
+    --project=$PROJECT_ID
 echo "---"
 
 # --- 2. Deploy AlphaBot ---
@@ -81,7 +89,7 @@ gcloud builds submit . --config=$ALPHABOT_BUILDFILE \
     --project=$PROJECT_ID --quiet
 
 # Step 2.2: Deploy to Cloud Run (passing RiskGuard URL)
-echo "Deploying AlphaBot service ($ALPHABOT_SERVICE_NAME)..."
+echo "Deploying AlphaBot service ($ALPHABOT_SERVICE_NAME) - Pass 1..."
 gcloud run deploy $ALPHABOT_SERVICE_NAME \
     --image=$ALPHABOT_IMAGE_TAG \
     --platform managed \
@@ -93,6 +101,14 @@ gcloud run deploy $ALPHABOT_SERVICE_NAME \
 # Step 2.3: Get Service URL
 export ALPHABOT_SERVICE_URL=$(gcloud run services describe $ALPHABOT_SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project=$PROJECT_ID)
 echo "AlphaBot URL: $ALPHABOT_SERVICE_URL"
+
+# Step 2.4: Update the service with its own public URL (Pass 2)
+echo "Updating AlphaBot service ($ALPHABOT_SERVICE_NAME) with its public URL..."
+gcloud run services update $ALPHABOT_SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --update-env-vars="RISKGUARD_SERVICE_URL=$RISKGUARD_SERVICE_URL,ALPHABOT_SERVICE_URL=$ALPHABOT_SERVICE_URL" \
+    --project=$PROJECT_ID
 echo "---"
 
 # --- 3. Deploy Simulator ---

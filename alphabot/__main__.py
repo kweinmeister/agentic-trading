@@ -1,16 +1,19 @@
 import logging
 
 import click
-import common.config as defaults
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
+import common.config as defaults
+from common.utils.agent_utils import get_service_url
+
 # Import the specific AgentExecutor for AlphaBot
 from .agent_executor import AlphaBotAgentExecutor
 
 logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,16 +28,23 @@ logger = logging.getLogger(__name__)
     default=int(defaults.DEFAULT_ALPHABOT_URL.split(":")[2]),
     help="Port to bind the server to.",
 )
-def main(host: str, port: int):
+@click.option(
+    "--proxy-headers",
+    is_flag=True,
+    default=False,
+    help="Enable proxy headers.",
+)
+def main(host: str, port: int, proxy_headers: bool):
     """Runs the AlphaBot agent as an A2A server."""
     logger.info("Configuring AlphaBot A2A server...")
 
     # Define the Agent Card for AlphaBot
     try:
+        card_url = get_service_url("ALPHABOT_SERVICE_URL", host, port)
         agent_card = AgentCard(
             name="AlphaBot Agent",
             description="Trading agent that analyzes market data and portfolio state to propose trades.",
-            url=f"http://{host}:{port}",  # SDK expects URL without trailing slash for server itself
+            url=card_url,
             version="1.0.0",
             capabilities=AgentCapabilities(
                 streaming=False,  # AlphaBotTaskManager doesn't support streaming
@@ -46,10 +56,10 @@ def main(host: str, port: int):
                     name="Provide Trade Signal",
                     description="Analyzes market and portfolio data to decide whether to buy, sell, or hold.",
                     examples=[
-                        "Given market data and portfolio, what trade should I make?"
+                        "Given market data and portfolio, what trade should I make?",
                     ],
                     tags=[],
-                )
+                ),
             ],
             default_input_modes=["data"],
             default_output_modes=["data"],
@@ -68,7 +78,8 @@ def main(host: str, port: int):
     # Instantiate the A2AStarletteApplication
     task_store = InMemoryTaskStore()
     request_handler = DefaultRequestHandler(
-        agent_executor=agent_executor, task_store=task_store
+        agent_executor=agent_executor,
+        task_store=task_store,
     )
     try:
         app_builder = A2AStarletteApplication(
@@ -84,7 +95,14 @@ def main(host: str, port: int):
 
     logger.info(f"Starting AlphaBot A2A server on http://{host}:{port}")
     logger.info("Press Ctrl+C to stop the server.")
-    uvicorn.run(app_builder.build(), host=host, port=port)
+    server_config = uvicorn.Config(
+        app_builder.build(),
+        host=host,
+        port=port,
+        proxy_headers=proxy_headers,
+    )
+    server = uvicorn.Server(server_config)
+    server.run()
 
 
 if __name__ == "__main__":
