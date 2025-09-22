@@ -173,9 +173,10 @@ async def test_execute_handles_adk_runner_exception(
     mock_runner_factory,
     event_queue,
 ):
-    """Test that if the ADK runner fails, the executor enqueues an error message.
+    """Test that the executor handles an ADK runner failure gracefully.
 
-    and closes the queue.
+    If the ADK runner raises an exception, the executor should enqueue an
+    error message and then close the event queue.
     """
     # Arrange
     mock_runner = mock_runner_factory("riskguard.agent_executor")

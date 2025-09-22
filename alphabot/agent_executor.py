@@ -33,9 +33,9 @@ class AlphaBotAgentExecutor(AgentExecutor):
         logger.info("AlphaBotAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """Receive a unified task payload, run it through the ADK agent.
+        """Receive a unified task payload and run it through the ADK agent.
 
-        And return the structured result in a standard Artifact.
+        The structured result is returned in a standard Artifact.
         """
         outcome = TradeOutcome(
             status=TradeStatus.ERROR,

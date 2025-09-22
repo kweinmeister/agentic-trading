@@ -13,9 +13,10 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def get_service_url(env_var_name: str, host: str, port: int) -> str:
-    """Determine the service URL by checking an environment variable first.
+    """Determine the service URL.
 
-    Then fall back to a host/port combination.
+    It checks an environment variable first, then falls back to a host/port
+    combination.
 
     Args:
         env_var_name: The name of the environment variable to check.

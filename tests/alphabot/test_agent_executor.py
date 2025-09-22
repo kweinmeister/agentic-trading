@@ -218,7 +218,8 @@ async def test_execute_returns_dict_not_string(
 ):
     """Ensure the final `DataPart` contains a dictionary, not a JSON string.
 
-    This prevents a `ValidationError` at runtime.
+    This test verifies that the data in the final `DataPart` is a Python
+    dictionary to prevent a `pydantic.ValidationError` at runtime.
     """
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 

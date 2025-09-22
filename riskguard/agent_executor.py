@@ -32,9 +32,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
         logger.info("RiskGuardAgentExecutor initialized with ADK Runner.")
 
     async def execute(self, context: RequestContext, event_queue: EventQueue):
-        """Receive a trade proposal, run it through the ADK agent, and immediately.
+        """Receive a trade proposal and run it through the ADK agent.
 
-        Returns the result in a single Message event.
+        The result is immediately returned in a single Message event.
         """
         try:
             if not context.context_id:

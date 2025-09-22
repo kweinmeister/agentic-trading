@@ -281,9 +281,10 @@ def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
 
 
 def test_risk_check_division_by_zero(riskguard_input_data_factory):
-    """Test that check_trade_risk_logic handles a portfolio with a total value of.
+    """Test that `check_trade_risk_logic` handles a zero-value portfolio.
 
-    zero gracefully, preventing a ZeroDivisionError.
+    This ensures the function does not raise a `ZeroDivisionError` when
+    calculating concentration for a portfolio with a total value of zero.
     """
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(

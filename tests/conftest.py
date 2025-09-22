@@ -108,9 +108,10 @@ def mock_runner_factory():
 
 @pytest.fixture
 def adk_mock_alphabot_generator():
-    """Mock the async generator for AlphaBot, yielding ADK Events instead of.
+    """Mock the async generator for the AlphaBot agent.
 
-    raw genai types. This aligns with the behavior of the ADK Runner.
+    This fixture yields ADK `Event` objects, simulating the behavior of the
+    ADK Runner, which wraps raw genai types.
     """
 
     async def _generator(final_state_delta, final_reason):
@@ -145,9 +146,10 @@ def adk_mock_alphabot_generator():
 
 @pytest.fixture
 def adk_mock_riskguard_generator():
-    """Mock the async generator for RiskGuard, yielding a single ADK Event.
+    """Mock the async generator for the RiskGuard agent.
 
-    with a function response. This aligns with the behavior of the ADK Runner.
+    This fixture yields a single ADK `Event` containing a function response,
+    simulating the behavior of the ADK Runner for a tool-like agent.
     """
 
     async def _generator(result_name, result_data):

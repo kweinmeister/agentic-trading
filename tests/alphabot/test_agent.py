@@ -513,11 +513,12 @@ async def test_alphabot_does_not_repropose_rejected_trade(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """Test that AlphaBot does not propose the same trade again immediately after.
+    """Test that AlphaBot does not re-propose a recently rejected trade.
 
-    It has been rejected by RiskGuard. This test simulates the scenario where
-    a BUY signal is generated, rejected, and then the agent is run again
-    with the same market conditions.
+    This test simulates a scenario where a BUY signal is generated, the
+    resulting trade is rejected by RiskGuard, and then the agent is run
+    again with the same market conditions, ensuring it doesn't propose the
+    same trade.
     """
     # 1. Initial State: Agent is not long
     adk_ctx.session.state = {"should_be_long": False}
@@ -587,9 +588,10 @@ async def test_alphabot_does_not_repropose_rejected_trade(
 def test_determine_trade_proposal_rejects_sell_if_quantity_exceeds_shares(
     agent: AlphaBotAgent,
 ):
-    """Test that _determine_trade_proposal for a SELL signal returns None if the.
+    """Test that `_determine_trade_proposal` returns None for a SELL signal.
 
-    configured trade_quantity exceeds the number of shares held.
+    This occurs when the configured trade quantity exceeds the number of
+    shares held.
     """
     portfolio_state = PortfolioState(cash=10000, shares=5, total_value=10500)
     trade_quantity = 10  # Attempting to sell more than owned
@@ -642,10 +644,7 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
     alphabot_input_data_factory,
     historical_prices_buy_signal,
 ):
-    """Test that if a BUY signal is generated but the agent is already long.
-
-    it produces a NO_ACTION outcome.
-    """
+    """Test that if a BUY signal is generated but the agent is already long, it produces a NO_ACTION outcome."""
     adk_ctx.session.state = {"should_be_long": True}  # Agent is already long
 
     input_data = alphabot_input_data_factory(
