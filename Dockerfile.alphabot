@@ -1,5 +1,5 @@
 # Use a consistent Python version
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Set working directory to the root of the package
 WORKDIR /app/agentic_trading
