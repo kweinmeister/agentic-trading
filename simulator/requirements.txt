@@ -1,6 +1,6 @@
-a2a-sdk==0.3.6
-fastapi[standard]==0.119.0
-google-adk==1.16.0
+a2a-sdk==0.3.10
+fastapi[standard]==0.120.0
+google-adk==1.17.0
 httpx-sse==0.4.3
 pandas==2.3.3
 plotly==6.3.1
