@@ -35,4 +35,4 @@ jobs:
         src: "."
     - name: Test with pytest
       run: |
-        pytest -vv
+        pytest
