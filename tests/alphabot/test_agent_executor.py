@@ -45,7 +45,6 @@ async def test_execute_success_buy_decision(
     adk_session,
 ) -> None:
     """Test the execute method for a successful buy decision."""
-    import asyncio
 
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
