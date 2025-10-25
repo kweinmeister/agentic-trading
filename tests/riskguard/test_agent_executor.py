@@ -1,5 +1,6 @@
 """Tests for the RiskGuard agent executor."""
 
+import asyncio
 from typing import Callable
 
 import pytest
@@ -32,7 +33,7 @@ async def test_execute_success_approved(
     mock_runner_factory,
     event_queue,
     adk_mock_riskguard_generator,
-):
+) -> None:
     """Test the execute method for a successful approved trade."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
@@ -49,19 +50,25 @@ async def test_execute_success_approved(
     # Act
     executor = RiskGuardAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
-    await executor.execute(
-        context=RequestContext(
-            request=MessageSendParams(message=request_message),
-            context_id="test-context-456",
-            task_id="test-task-123",
-        ),
-        event_queue=event_queue,
+    execution_task = asyncio.create_task(
+        executor.execute(
+            context=RequestContext(
+                request=MessageSendParams(message=request_message),
+                context_id="test-context-456",
+                task_id="test-task-123",
+            ),
+            event_queue=event_queue,
+        )
     )
 
     # Assert
-    assert mock_runner_instance.run_async.call_count == 1
     enqueued_message = await event_queue.dequeue_event()
+    event_queue.task_done()
 
+    await execution_task
+    assert event_queue.is_closed()
+
+    assert mock_runner_instance.run_async.call_count == 1
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
@@ -77,7 +84,7 @@ async def test_execute_missing_trade_proposal(
     mock_runner_factory,
     adk_mock_riskguard_generator,
     event_queue,
-):
+) -> None:
     """Test the execute method with a missing trade proposal."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
@@ -103,17 +110,23 @@ async def test_execute_missing_trade_proposal(
     # Act
     executor = RiskGuardAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
-    await executor.execute(
-        context=RequestContext(
-            request=MessageSendParams(message=request_message),
-            context_id="test-context-456",
-            task_id="test-task-123",
-        ),
-        event_queue=event_queue,
+    execution_task = asyncio.create_task(
+        executor.execute(
+            context=RequestContext(
+                request=MessageSendParams(message=request_message),
+                context_id="test-context-456",
+                task_id="test-task-123",
+            ),
+            event_queue=event_queue,
+        )
     )
 
     # Assert
     enqueued_message = await event_queue.dequeue_event()
+    event_queue.task_done()
+
+    await execution_task
+    assert event_queue.is_closed()
 
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
@@ -133,7 +146,7 @@ async def test_execute_adk_runner_exception(
     mock_runner_factory,
     adk_mock_riskguard_generator,
     event_queue,
-):
+) -> None:
     """Test the execute method with an ADK runner exception."""
     mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
 
@@ -144,17 +157,23 @@ async def test_execute_adk_runner_exception(
     # Act
     executor = RiskGuardAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
-    await executor.execute(
-        context=RequestContext(
-            request=MessageSendParams(message=request_message),
-            context_id="test-context-456",
-            task_id="test-task-123",
-        ),
-        event_queue=event_queue,
+    execution_task = asyncio.create_task(
+        executor.execute(
+            context=RequestContext(
+                request=MessageSendParams(message=request_message),
+                context_id="test-context-456",
+                task_id="test-task-123",
+            ),
+            event_queue=event_queue,
+        )
     )
 
     # Assert
     enqueued_message = await event_queue.dequeue_event()
+    event_queue.task_done()
+
+    await execution_task
+    assert event_queue.is_closed()
 
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
@@ -172,7 +191,7 @@ async def test_execute_handles_adk_runner_exception(
     riskguard_message_factory,
     mock_runner_factory,
     event_queue,
-):
+) -> None:
     """Test that the executor handles an ADK runner failure gracefully.
 
     If the ADK runner raises an exception, the executor should enqueue an
@@ -194,11 +213,14 @@ async def test_execute_handles_adk_runner_exception(
     executor = RiskGuardAgentExecutor()
     executor._adk_runner = mock_runner  # Inject the mock runner
 
-    await executor.execute(context, event_queue)
+    execution_task = asyncio.create_task(executor.execute(context, event_queue))
 
     # Assert
     # 1. An event was enqueued
     enqueued_message = await event_queue.dequeue_event()
+    event_queue.task_done()
+
+    await execution_task
     assert event_queue.is_closed()
 
     # 2. The enqueued event is a Message containing error details
