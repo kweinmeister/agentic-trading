@@ -1,2 +1,2 @@
 google-adk==1.17.0
-a2a-sdk==0.3.10
+a2a-sdk==0.3.11
