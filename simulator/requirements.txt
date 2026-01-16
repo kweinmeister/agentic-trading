@@ -1,5 +1,5 @@
 a2a-sdk==0.3.22
-fastapi[standard]==0.123.0
+fastapi[standard]==0.128.0
 google-adk==1.22.0
 httpx-sse==0.4.3
 pandas==2.3.3
