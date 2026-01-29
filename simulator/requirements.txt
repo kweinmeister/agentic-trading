@@ -3,4 +3,4 @@ fastapi[standard]==0.123.0
 google-adk==1.23.0
 httpx-sse==0.4.3
 pandas==3.0.0
-plotly==6.5.1
+plotly==6.5.2
