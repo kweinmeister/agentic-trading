@@ -1,0 +1,266 @@
+manifest:
+  version: "0.1.3"
+  schema: https://a2as.org/cert/schema
+  subject:
+    name: kweinmeister/agentic-trading
+    source: https://github.com/kweinmeister/agentic-trading
+    branch: main
+    commit: "5a60c01c"
+    scope: [alphabot/a2a_risk_tool.py, alphabot/agent.py, common/config.py, common/models.py, common/utils/agent_utils.py,
+      common/utils/indicators.py, riskguard/agent.py, riskguard/rules.py]
+  issued:
+    by: A2AS.org
+    at: '2026-02-11T16:30:41Z'
+    url: https://a2as.org/certified/agents/kweinmeister/agentic-trading
+  signatures:
+    digest: sha256:1spLo-ADAQ-n7SDMEP15-fPF0310NelbpkRzqp7wGEc
+    key: ed25519:0WkaAyIkH7jnNXAqsGcgwcdeo4-9BkELxLA0O6mOMbk
+    sig: ed25519:s0bfrXQr8a_va9DXu8ZY9HeiyaDh-4BaVdyPCxbQ7-nhQfd9GP1H3R23CEBICj7JNgLb_CNs19phHLWG-h19CA
+
+agents:
+  root_agent.0:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      instance: root_agent
+  root_agent.1:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      instance: root_agent
+  root_agent.2:
+    type: instance
+    models: [gemini-2.5-flash]
+    params:
+      class: AlphaBotAgent
+      base: BaseAgent
+      name: agent_name
+      description: AlphaBot agent using SMA crossover strategy with A2A risk checks.
+      instance: root_agent
+
+models:
+  gemini-2.5-flash:
+    type: default
+    agents: [root_agent.0, root_agent.1, root_agent.2]
+
+imports:
+  A2ACardResolver: a2a.client.A2ACardResolver
+  A2AClientHTTPError: a2a.client.A2AClientHTTPError
+  A2AClientInvalidStateError: a2a.client.errors.A2AClientInvalidStateError
+  A2AClientJSONError: a2a.client.A2AClientJSONError
+  A2ARiskCheckTool: a2a_risk_tool.A2ARiskCheckTool
+  A2AStarletteApplication: a2a.server.apps.A2AStarletteApplication
+  agent: agent
+  agent_executor: agent_executor
+  AgentCapabilities: a2a.types.AgentCapabilities
+  AgentCard: a2a.types.AgentCard
+  AgentExecutor: a2a.server.agent_execution.AgentExecutor
+  AgentSkill: a2a.types.AgentSkill
+  alphabot_adk_agent: alphabot.agent.root_agent
+  AlphaBotAgentExecutor: agent_executor.AlphaBotAgentExecutor
+  AlphaBotTaskPayload: common.models.AlphaBotTaskPayload
+  Any: typing.Any
+  AsyncGenerator: collections.abc.AsyncGenerator
+  BaseAgent: google.adk.agents.BaseAgent
+  BaseModel: pydantic.BaseModel
+  BaseTool: google.adk.tools.BaseTool
+  calculate_sma: common.utils.indicators.calculate_sma
+  check_trade_risk_logic: rules.check_trade_risk_logic
+  click: click
+  ClientConfig: a2a.client.ClientConfig
+  ClientFactory: a2a.client.ClientFactory
+  DataPart: a2a.types.DataPart
+  DEFAULT_ALPHABOT_LONG_SMA: config.DEFAULT_ALPHABOT_LONG_SMA
+  DEFAULT_ALPHABOT_SHORT_SMA: config.DEFAULT_ALPHABOT_SHORT_SMA
+  DEFAULT_ALPHABOT_TRADE_QTY: config.DEFAULT_ALPHABOT_TRADE_QTY
+  DEFAULT_RISKGUARD_MAX_CONCENTRATION: common.config.DEFAULT_RISKGUARD_MAX_CONCENTRATION
+  DEFAULT_RISKGUARD_MAX_POS_SIZE: common.config.DEFAULT_RISKGUARD_MAX_POS_SIZE
+  DEFAULT_RISKGUARD_URL: config.DEFAULT_RISKGUARD_URL
+  DEFAULT_TICKER: common.config.DEFAULT_TICKER
+  DefaultRequestHandler: a2a.server.request_handlers.DefaultRequestHandler
+  defaults: common.config
+  Dict: typing.Dict
+  Enum: enum.Enum
+  Event: google.adk.events.Event
+  EventActions: google.adk.events.EventActions
+  EventQueue: a2a.server.events.EventQueue
+  Field: pydantic.Field
+  genai_types: google.genai.types
+  get_service_url: common.utils.agent_utils.get_service_url
+  httpx: httpx
+  InMemoryMemoryService: google.adk.memory.InMemoryMemoryService
+  InMemorySessionService: google.adk.sessions.InMemorySessionService
+  InMemoryTaskStore: a2a.server.tasks.InMemoryTaskStore
+  InvocationContext: google.adk.agents.invocation_context.InvocationContext
+  json: json
+  List: typing.List
+  Literal: typing.Literal
+  logging: logging
+  Message: a2a.types.Message
+  new_agent_parts_message: a2a.utils.message.new_agent_parts_message
+  Optional: typing.Optional
+  os: os
+  parse_and_validate_input: common.utils.agent_utils.parse_and_validate_input
+  Part: a2a.types.Part
+  PortfolioState: common.models.PortfolioState
+  RequestContext: a2a.server.agent_execution.RequestContext
+  RiskCheckPayload: common.models.RiskCheckPayload
+  RiskCheckResult: common.models.RiskCheckResult
+  riskguard_adk_agent: agent.root_agent
+  RiskGuardAgentExecutor: agent_executor.RiskGuardAgentExecutor
+  Role: a2a.types.Role
+  Runner: google.adk.Runner
+  Session: google.adk.sessions.Session
+  ToolContext: google.adk.tools.ToolContext
+  TradeOutcome: common.models.TradeOutcome
+  TradeProposal: common.models.TradeProposal
+  TradeStatus: common.models.TradeStatus
+  Type: typing.Type
+  TypeVar: typing.TypeVar
+  uuid: uuid
+  uvicorn: uvicorn
+  ValidationError: pydantic.ValidationError
+
+functions:
+  __init__:
+    type: sync
+    module: riskguard.agent_executor
+    args: [self]
+  _calculate_indicators:
+    type: sync
+    module: alphabot.agent
+    args: [self, historical_prices, short_period, long_period, invocation_id]
+    params:
+      returns: tuple
+  _determine_trade_proposal:
+    type: sync
+    module: alphabot.agent
+    args: [self, signal, should_be_long, portfolio_state, current_price, trade_quantity, last_rejected_trade]
+    params:
+      returns: Optional[dict]
+  _generate_signal:
+    type: sync
+    module: alphabot.agent
+    args: [self, sma_short, sma_long, prev_sma_short, prev_sma_long, invocation_id]
+  _get_declaration:
+    type: sync
+    module: alphabot.a2a_risk_tool
+    args: [self]
+    params:
+      returns: genai_types.FunctionDeclaration
+  _perform_risk_check:
+    type: async
+    module: alphabot.agent
+    args: [self, trade_proposal, portfolio_state, risk_params, ctx]
+  _process_risk_result:
+    type: sync
+    module: alphabot.agent
+    args: [self, risk_result, trade_proposal, signal, invocation_id]
+    params:
+      returns: Event
+  _run_async_impl:
+    type: async
+    module: alphabot.agent
+    args: [self, ctx]
+    params:
+      returns: AsyncGenerator
+  calculate_sma:
+    type: sync
+    module: common.utils.indicators
+    args: [prices, period]
+    params:
+      returns: Optional[float]
+  cancel:
+    type: async
+    module: riskguard.agent_executor
+    args: [self, context, event_queue]
+  check_trade_risk_logic:
+    type: sync
+    module: riskguard.rules
+    args: [trade_proposal, portfolio_state, max_pos_size, max_concentration]
+    params:
+      returns: RiskCheckResult
+  close:
+    type: async
+    module: alphabot.a2a_risk_tool
+    args: [self]
+  execute:
+    type: async
+    module: riskguard.agent_executor
+    args: [self, context, event_queue]
+  get_service_url:
+    type: sync
+    module: common.utils.agent_utils
+    args: [env_var_name, host, port]
+    params:
+      returns: str
+  main:
+    type: sync
+    module: riskguard.__main__
+    args: [host, port, proxy_headers]
+  parse_and_validate_input:
+    type: sync
+    module: common.utils.agent_utils
+    args: [ctx, payload_model, agent_name]
+  run_async:
+    type: async
+    module: alphabot.a2a_risk_tool
+    args: [self]
+    params:
+      returns: Event
+
+variables:
+  env_var_name:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [common.utils.agent_utils]
+  RISKGUARD_SERVICE_URL:
+    type: env
+    params:
+      caller: [os.environ.get]
+      path: [alphabot.a2a_risk_tool]
+
+networks:
+  "127.0.0.1":
+    type: api
+    actions: [GET]
+    urls: ['/{...}']
+    protocols: [http]
+    ports: ["80"]
+    params:
+      pattern: http://127.0.0.1:{DEFAULT_RISKGUARD_PORT}
+  "127.0.0.1.1":
+    type: api
+    actions: [GET]
+    urls: ['/{...}']
+    protocols: [http]
+    ports: ["80"]
+    params:
+      pattern: http://127.0.0.1:{DEFAULT_ALPHABOT_PORT}
+  "127.0.0.1.2":
+    type: api
+    actions: [GET]
+    urls: ['/{...}']
+    protocols: [http]
+    ports: ["80"]
+    params:
+      pattern: http://127.0.0.1:{DEFAULT_SIMULATOR_PORT}
+  agent_card:
+    type: api
+    actions: [GET]
+    protocols: [http]
+    ports: ["80"]
+    params:
+      caller: [main]
+      pattern: http://{...}:{...}
+  card_url:
+    type: api
+    actions: [GET]
+    protocols: [http]
+    ports: ["80"]
+    params:
+      pattern: http://{host}:{port}
+      caller: [get_service_url]
+      dynamic: "True"
+      variable: card_url
