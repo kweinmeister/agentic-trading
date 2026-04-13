@@ -1,6 +1,6 @@
 a2a-sdk==0.3.25
 fastapi[standard]==0.135.2
-google-adk==1.28.0
+google-adk==1.29.0
 httpx-sse==0.4.3
 pandas==3.0.1
 plotly==6.6.0
