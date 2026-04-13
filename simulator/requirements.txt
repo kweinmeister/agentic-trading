@@ -1,4 +1,4 @@
-a2a-sdk==0.3.25
+a2a-sdk==0.3.26
 fastapi[standard]==0.135.2
 google-adk==1.28.0
 httpx-sse==0.4.3
