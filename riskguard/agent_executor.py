@@ -7,7 +7,6 @@ from typing import Any
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.helpers import get_data_parts, new_data_part, new_message as new_agent_parts_message
-from a2a.types import Part
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types as genai_types

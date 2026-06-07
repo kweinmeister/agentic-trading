@@ -7,7 +7,6 @@ from a2a.client import ClientFactory
 from a2a.helpers import new_data_part
 from a2a.types import (
     Message,
-    Part,
     Role,
 )
 from fastapi.testclient import TestClient

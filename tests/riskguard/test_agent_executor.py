@@ -7,7 +7,7 @@ import pytest
 from a2a.server.agent_execution import RequestContext
 from a2a.server.context import ServerCallContext
 from a2a.helpers import get_data_parts, new_data_part
-from a2a.types import Message, SendMessageRequest as MessageSendParams, Part, Role
+from a2a.types import Message, SendMessageRequest as MessageSendParams, Role
 
 from riskguard.agent_executor import RiskGuardAgentExecutor
 

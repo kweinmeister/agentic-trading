@@ -12,7 +12,6 @@ from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
     AgentCard,
     Message,
-    Part,
     Role,
 )
 from google.adk.agents.invocation_context import InvocationContext

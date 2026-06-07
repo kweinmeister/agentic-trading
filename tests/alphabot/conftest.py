@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 from a2a.helpers import new_data_part
-from a2a.types import Message, Part, Role
+from a2a.types import Message, Role
 
 from alphabot.a2a_risk_tool import A2ARiskCheckTool
 from alphabot.agent import AlphaBotAgent

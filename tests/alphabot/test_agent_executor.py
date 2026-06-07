@@ -11,7 +11,6 @@ from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
     Message,
     SendMessageRequest as MessageSendParams,
-    Part,
     Role,
 )
 from google.adk.events import Event, EventActions

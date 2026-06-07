@@ -9,6 +9,16 @@ from a2a.server.routes.jsonrpc_routes import create_jsonrpc_routes
 from a2a.server.routes.rest_routes import create_rest_routes
 from a2a.server.routes.fastapi_routes import add_a2a_routes_to_fastapi
 
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentSkill
+
+import common.config as defaults
+from common.utils.agent_utils import get_service_url
+
+from .agent import root_agent as riskguard_adk_agent
+from .agent_executor import RiskGuardAgentExecutor  # Renamed from RiskGuardTaskManager
+
 class A2AStarletteApplication:
     def __init__(self, agent_card, http_handler):
         self.agent_card = agent_card
@@ -23,15 +33,6 @@ class A2AStarletteApplication:
             rest_routes=create_rest_routes(self.http_handler),
         )
         return app
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-
-import common.config as defaults
-from common.utils.agent_utils import get_service_url
-
-from .agent import root_agent as riskguard_adk_agent
-from .agent_executor import RiskGuardAgentExecutor  # Renamed from RiskGuardTaskManager
 
 logging.basicConfig(level=logging.INFO)
 

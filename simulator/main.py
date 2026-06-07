@@ -27,7 +27,6 @@ from a2a.client import (
 )
 from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
-    Part,
     Role,
 )
 from a2a.types import (
