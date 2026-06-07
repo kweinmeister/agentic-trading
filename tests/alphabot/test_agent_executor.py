@@ -283,7 +283,7 @@ async def test_execute_session_continuity(
     )
 
     mock_runner_instance.session_service.get_session = AsyncMock(
-        return_value=adk_session
+        return_value=adk_session,
     )
     mock_runner_instance.session_service.create_session = AsyncMock()
 
@@ -320,7 +320,7 @@ async def test_execute_no_action_path(
     )
 
     mock_runner_instance.session_service.get_session = AsyncMock(
-        return_value=adk_session
+        return_value=adk_session,
     )
 
     async def mock_run_async_generator():
@@ -331,7 +331,7 @@ async def test_execute_no_action_path(
         yield Event(
             author="test",
             content=genai_types.Content(
-                parts=[genai_types.Part(text="No trades today.")]
+                parts=[genai_types.Part(text="No trades today.")],
             ),
             turn_complete=True,
         )

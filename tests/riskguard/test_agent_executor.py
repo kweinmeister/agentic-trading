@@ -178,7 +178,7 @@ async def test_execute_session_continuity(
     request_message = riskguard_message_factory()
 
     mock_runner_instance.session_service.get_session = AsyncMock(
-        return_value=adk_session
+        return_value=adk_session,
     )
     mock_runner_instance.session_service.create_session = AsyncMock()
     mock_runner_instance.run_async.return_value = adk_mock_riskguard_generator(
@@ -217,10 +217,10 @@ async def test_execute_get_session_exception_fallback(
     request_message = riskguard_message_factory()
 
     mock_runner_instance.session_service.get_session = AsyncMock(
-        side_effect=Exception("DB Connection Error")
+        side_effect=Exception("DB Connection Error"),
     )
     mock_runner_instance.session_service.create_session = AsyncMock(
-        return_value=adk_session
+        return_value=adk_session,
     )
     mock_runner_instance.run_async.return_value = adk_mock_riskguard_generator(
         result_name="risk_check_result",
@@ -282,3 +282,43 @@ async def test_execute_cancel(
         and e.status.state == TaskState.TASK_STATE_CANCELED
         for e in _events
     )
+
+
+@pytest.mark.asyncio
+async def test_execute_pydantic_validation_error_sanitization(
+    riskguard_message_factory,
+    mock_runner_factory,
+    event_queue,
+) -> None:
+    """Test that execute catches Pydantic ValidationError and sanitizes it to generic error text."""
+    from pydantic import BaseModel, ValidationError
+
+    mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
+    request_message = riskguard_message_factory()
+
+    class DummyModel(BaseModel):
+        field: int
+
+    try:
+        DummyModel.model_validate({"field": "not an int"})
+    except ValidationError as val_err:
+        mock_runner_instance.run_async.side_effect = val_err
+
+    executor = RiskGuardAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-context-111",
+            task_id="test-task-222",
+        ),
+        event_queue=event_queue,
+    )
+
+    enqueued_message, _ = await get_executor_results(event_queue)
+    await event_queue.close()
+
+    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
+    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
+    assert enqueued_message.status.message.parts[0].text == "Input validation failed."

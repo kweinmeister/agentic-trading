@@ -181,10 +181,11 @@ class RiskGuardAgentExecutor(AgentExecutor):
             from pydantic import ValidationError
 
             logger.error(f"Error during RiskGuard execution: {e}", exc_info=True)
-            if isinstance(
+            if isinstance(e, ValidationError):
+                error_text = "Input validation failed."
+            elif isinstance(
                 e,
                 (
-                    ValidationError,
                     ValueError,
                     ConnectionError,
                     RuntimeError,

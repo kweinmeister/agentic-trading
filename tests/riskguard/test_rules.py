@@ -191,14 +191,15 @@ def test_check_trade_risk_logic_scenarios(
     """Test check_trade_risk_logic with various parameterized scenarios."""
     trade_proposal = TradeProposal(
         action=cast(
-            "Literal['BUY', 'SELL']", action if action in ("BUY", "SELL") else "BUY"
+            "Literal['BUY', 'SELL']",
+            action if action in ("BUY", "SELL") else "BUY",
         ),
         ticker="TECH",
         quantity=quantity,
         price=price,
     )
     if action == "HOLD":
-        setattr(trade_proposal, "action", "HOLD")
+        trade_proposal.action = "HOLD"
 
     portfolio_state = PortfolioState(cash=cash, shares=shares, total_value=total_value)
 

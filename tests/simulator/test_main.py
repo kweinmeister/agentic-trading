@@ -211,18 +211,17 @@ def test_run_simulation_success_sell() -> None:
                 "reason": "SMA crossover",
                 "error": None,
             }
-        else:
-            return {
-                "approved_trade": {
-                    "action": "SELL",
-                    "quantity": 5,
-                    "price": 100.0,
-                    "ticker": "SIM",
-                },
-                "rejected_trade": None,
-                "reason": "SMA crossover",
-                "error": None,
-            }
+        return {
+            "approved_trade": {
+                "action": "SELL",
+                "quantity": 5,
+                "price": 100.0,
+                "ticker": "SIM",
+            },
+            "rejected_trade": None,
+            "reason": "SMA crossover",
+            "error": None,
+        }
 
     with patch("simulator.main._call_alphabot_a2a", new_callable=AsyncMock) as mock:
         mock.side_effect = mock_sell_a2a
@@ -435,7 +434,7 @@ def test_simulation_run_params() -> None:
                 "riskguard_max_pos_size": 10000.0,
                 "riskguard_max_concentration": 50,
                 "alphabot_url": "http://127.0.0.1:8081",
-            }
+            },
         )
 
 
@@ -575,7 +574,8 @@ async def test_call_alphabot_a2a_stream_handling_and_parsing(
 
     # 1. NO_ACTION
     outcome_no_action = TradeOutcome(
-        status=TradeStatus.NO_ACTION, reason="No SMA cross"
+        status=TradeStatus.NO_ACTION,
+        reason="No SMA cross",
     )
     msg_no_action = Message(
         message_id="m1",
@@ -621,7 +621,7 @@ async def test_call_alphabot_a2a_stream_handling_and_parsing(
 
     # 6. task event (should be debug logged but not terminate)
     task_event = StreamResponse(
-        task=Task(id="task-123", status=TaskStatus(state=TaskState.TASK_STATE_WORKING))
+        task=Task(id="task-123", status=TaskStatus(state=TaskState.TASK_STATE_WORKING)),
     )
     res_task = await run_call([task_event, StreamResponse(message=msg_no_action)])
     assert res_task["reason"] == "No SMA cross"

@@ -109,13 +109,13 @@ def test_alphabot_fastapi_app_routes() -> None:
 
         # Stub route objects
         mock_card_routes.return_value = [
-            APIRoute(path="/.well-known/agent-card.json", endpoint=lambda: None)
+            APIRoute(path="/.well-known/agent-card.json", endpoint=lambda: None),
         ]
         mock_rpc_routes.return_value = [
-            APIRoute(path="/a2a/jsonrpc", endpoint=lambda: None)
+            APIRoute(path="/a2a/jsonrpc", endpoint=lambda: None),
         ]
         mock_rest_routes.return_value = [
-            APIRoute(path="/a2a/rest/run", endpoint=lambda: None)
+            APIRoute(path="/a2a/rest/run", endpoint=lambda: None),
         ]
 
         app = create_app(mock_card, mock_handler)

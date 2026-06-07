@@ -45,7 +45,7 @@ def test_risk_check_payload_missing_required_field(base_trade_proposal) -> None:
     # sees a dict (Any) rather than a constructor call with a missing required arg.
     with pytest.raises(ValidationError) as exc_info:
         RiskCheckPayload.model_validate(
-            {"trade_proposal": base_trade_proposal.model_dump()}
+            {"trade_proposal": base_trade_proposal.model_dump()},
         )
 
     assert "portfolio_state" in str(exc_info.value)
@@ -172,5 +172,5 @@ def test_alphabot_task_payload_defaults_and_boundaries(base_portfolio_state) -> 
                 "current_price": 103.0,
                 "portfolio_state": base_portfolio_state,
                 "day": 5,
-            }
+            },
         )

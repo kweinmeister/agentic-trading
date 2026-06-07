@@ -253,6 +253,7 @@ def create_async_error_iterator(exception_class, *args, **kwargs) -> Any:
 def mock_alphabot_a2a():
     """Mock and patch A2A SDK components used by AlphaBot (a2a_risk_tool)."""
     from unittest.mock import AsyncMock, MagicMock, patch
+
     from a2a.types import AgentCard, AgentInterface
 
     with (
@@ -297,6 +298,7 @@ def mock_alphabot_a2a():
 def mock_simulator_a2a():
     """Mock and patch A2A SDK components used by the Simulator (simulator.main)."""
     from unittest.mock import AsyncMock, MagicMock, patch
+
     from a2a.types import AgentCard, AgentInterface
 
     with (

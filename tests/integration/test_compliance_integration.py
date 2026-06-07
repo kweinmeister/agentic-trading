@@ -81,7 +81,7 @@ def make_riskguard_app(mock_run_async_generator) -> FastAPI:
                 description="desc",
                 examples=[],
                 tags=[],
-            )
+            ),
         ],
         default_input_modes=["data"],
         default_output_modes=["data"],
@@ -108,7 +108,8 @@ def make_riskguard_app(mock_run_async_generator) -> FastAPI:
 
 # Helper to create AlphaBot app
 def make_alphabot_app(
-    mock_run_async_generator, risk_client: httpx.AsyncClient | None = None
+    mock_run_async_generator,
+    risk_client: httpx.AsyncClient | None = None,
 ) -> FastAPI:
     executor = AlphaBotAgentExecutor()
     executor._adk_runner.run_async = mock_run_async_generator
@@ -116,7 +117,7 @@ def make_alphabot_app(
         tools = executor._adk_agent.tools or []
         for tool in tools:
             if isinstance(tool, A2ARiskCheckTool):
-                tool._httpx_client = risk_client
+                tool.httpx_client = risk_client
                 tool.risk_guard_url = (
                     "http://localhost:8080"  # Base url to route through ASGITransport
                 )
@@ -134,7 +135,7 @@ def make_alphabot_app(
                 description="desc",
                 examples=[],
                 tags=[],
-            )
+            ),
         ],
         default_input_modes=["data"],
         default_output_modes=["data"],
@@ -186,7 +187,8 @@ async def test_riskguard_contract_and_lifecycle() -> None:
 
     # Verify /.well-known/agent-card.json compliance
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://localhost:8080"
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://localhost:8080",
     ) as client:
         card_response = await client.get("/.well-known/agent-card.json")
         assert card_response.status_code == 200
@@ -196,7 +198,8 @@ async def test_riskguard_contract_and_lifecycle() -> None:
 
         # Test Card Resolution and Client Construction
         resolver = A2ACardResolver(
-            httpx_client=client, base_url="http://localhost:8080"
+            httpx_client=client,
+            base_url="http://localhost:8080",
         )
         card = await resolver.get_agent_card()
         assert card.name == "RiskGuard"
@@ -207,10 +210,15 @@ async def test_riskguard_contract_and_lifecycle() -> None:
         # Call RiskGuard
         payload = RiskCheckPayload(
             trade_proposal=TradeProposal(
-                action="BUY", ticker="TEST", quantity=10, price=100.0
+                action="BUY",
+                ticker="TEST",
+                quantity=10,
+                price=100.0,
             ),
             portfolio_state=CommonPortfolioState(
-                cash=10000.0, shares=0, total_value=10000.0
+                cash=10000.0,
+                shares=0,
+                total_value=10000.0,
             ),
             max_pos_size=5000.0,
             max_concentration=0.5,
@@ -255,7 +263,7 @@ async def test_alphabot_contract_and_lifecycle() -> None:
             content=genai_types.Content(
                 parts=[
                     genai_types.Part(
-                        text="Trade Approved (A2A): Within risk parameters"
+                        text="Trade Approved (A2A): Within risk parameters",
                     ),
                 ],
             ),
@@ -276,7 +284,8 @@ async def test_alphabot_contract_and_lifecycle() -> None:
     app = make_alphabot_app(mock_run_async)
 
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://localhost:8081"
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://localhost:8081",
     ) as client:
         card_response = await client.get("/.well-known/agent-card.json")
         assert card_response.status_code == 200
@@ -285,7 +294,8 @@ async def test_alphabot_contract_and_lifecycle() -> None:
         assert card_data["version"] == "1.0.0"
 
         resolver = A2ACardResolver(
-            httpx_client=client, base_url="http://localhost:8081"
+            httpx_client=client,
+            base_url="http://localhost:8081",
         )
         card = await resolver.get_agent_card()
         assert card.name == "AlphaBot Agent"
@@ -297,7 +307,9 @@ async def test_alphabot_contract_and_lifecycle() -> None:
             historical_prices=[90.0, 95.0, 100.0],
             current_price=100.0,
             portfolio_state=CommonPortfolioState(
-                cash=10000.0, shares=0, total_value=10000.0
+                cash=10000.0,
+                shares=0,
+                total_value=10000.0,
             ),
             day=1,
             short_sma_period=2,
@@ -361,130 +373,140 @@ async def test_simulator_alphabot_riskguard_e2e() -> None:
         base_url="http://localhost:8080",
     )
 
-    # 2. Setup AlphaBot E2E proxy run_async
-    async def mock_alphabot_e2e_run_async(user_id, session_id, new_message):
-        text = new_message.parts[0].text
-        input_payload = AlphaBotTaskPayload.model_validate_json(text)
+    try:
+        # 2. Setup AlphaBot E2E proxy run_async
+        async def mock_alphabot_e2e_run_async(user_id, session_id, new_message):
+            text = new_message.parts[0].text
+            input_payload = AlphaBotTaskPayload.model_validate_json(text)
 
-        trade_proposal = {
-            "action": "BUY",
-            "ticker": "TEST",
-            "quantity": 10,
-            "price": 100.0,
-        }
+            trade_proposal = {
+                "action": "BUY",
+                "ticker": "TEST",
+                "quantity": 10,
+                "price": 100.0,
+            }
 
-        yield Event(
-            author="AlphaBot",
-            content=genai_types.Content(
-                parts=[genai_types.Part(text="Proposing BUY 10 TEST @ $100")],
-            ),
-        )
+            yield Event(
+                author="AlphaBot",
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text="Proposing BUY 10 TEST @ $100")],
+                ),
+            )
 
-        # Manually invoke RiskGuard ASGI app using the A2A resolver and client
-        resolver = A2ACardResolver(
-            httpx_client=risk_client, base_url="http://localhost:8080"
-        )
-        rg_card = await resolver.get_agent_card()
-        rg_sdk_client = ClientFactory(
-            config=ClientConfig(httpx_client=risk_client)
-        ).create(rg_card)
+            # Manually invoke RiskGuard ASGI app using the A2A resolver and client
+            resolver = A2ACardResolver(
+                httpx_client=risk_client,
+                base_url="http://localhost:8080",
+            )
+            rg_card = await resolver.get_agent_card()
+            rg_sdk_client = ClientFactory(
+                config=ClientConfig(httpx_client=risk_client),
+            ).create(rg_card)
 
-        rg_payload = RiskCheckPayload(
-            trade_proposal=TradeProposal(
-                action="BUY",
-                ticker="TEST",
-                quantity=10,
-                price=100.0,
-            ),
-            portfolio_state=input_payload.portfolio_state,
-            max_pos_size=input_payload.max_pos_size,
-            max_concentration=input_payload.max_concentration,
-        )
-        rg_message = A2AMessage(
-            message_id="msg-rg-1",
-            role=Role.ROLE_USER,
-            parts=[new_data_part(rg_payload.model_dump(mode="json"))],
-            context_id=session_id,
-        )
+            rg_payload = RiskCheckPayload(
+                trade_proposal=TradeProposal(
+                    action="BUY",
+                    ticker="TEST",
+                    quantity=10,
+                    price=100.0,
+                ),
+                portfolio_state=input_payload.portfolio_state,
+                max_pos_size=input_payload.max_pos_size,
+                max_concentration=input_payload.max_concentration,
+            )
+            rg_message = A2AMessage(
+                message_id="msg-rg-1",
+                role=Role.ROLE_USER,
+                parts=[new_data_part(rg_payload.model_dump(mode="json"))],
+                context_id=session_id,
+            )
 
-        rg_stream = rg_sdk_client.send_message(SendMessageRequest(message=rg_message))
-        _, rg_artifact = await _parse_a2a_stream(rg_stream)
-        rg_result = get_data_parts(rg_artifact.parts)[0] if rg_artifact else {}
+            rg_stream = rg_sdk_client.send_message(
+                SendMessageRequest(message=rg_message),
+            )
+            _, rg_artifact = await _parse_a2a_stream(rg_stream)
+            rg_result = get_data_parts(rg_artifact.parts)[0] if rg_artifact else {}
 
-        approved = rg_result.get("approved", False)
-        reason = rg_result.get("reason", "")
+            approved = rg_result.get("approved", False)
+            reason = rg_result.get("reason", "")
 
-        yield Event(
-            author="AlphaBot",
-            content=genai_types.Content(
-                parts=[
-                    genai_types.Part(
-                        text=f"Trade Approved (A2A): {reason}"
+            yield Event(
+                author="AlphaBot",
+                content=genai_types.Content(
+                    parts=[
+                        genai_types.Part(
+                            text=f"Trade Approved (A2A): {reason}"
+                            if approved
+                            else f"Trade Rejected (A2A): {reason}",
+                        ),
+                    ],
+                ),
+                actions=EventActions(
+                    state_delta={
+                        "should_be_long": bool(approved),
+                        "approved_trade"
                         if approved
-                        else f"Trade Rejected (A2A): {reason}"
-                    )
-                ],
-            ),
-            actions=EventActions(
-                state_delta={
-                    "should_be_long": bool(approved),
-                    "approved_trade"
-                    if approved
-                    else "rejected_trade_proposal": trade_proposal,
-                },
-            ),
-            turn_complete=True,
+                        else "rejected_trade_proposal": trade_proposal,
+                    },
+                ),
+                turn_complete=True,
+            )
+
+        alphabot_app = make_alphabot_app(
+            mock_alphabot_e2e_run_async,
+            risk_client=risk_client,
         )
 
-    alphabot_app = make_alphabot_app(
-        mock_alphabot_e2e_run_async, risk_client=risk_client
-    )
+        # 3. Call AlphaBot from the Simulator perspective
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=alphabot_app),
+            base_url="http://localhost:8081",
+        ) as client:
+            resolver = A2ACardResolver(
+                httpx_client=client,
+                base_url="http://localhost:8081",
+            )
+            card = await resolver.get_agent_card()
+            sdk_client = ClientFactory(config=ClientConfig(httpx_client=client)).create(
+                card,
+            )
 
-    # 3. Call AlphaBot from the Simulator perspective
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=alphabot_app),
-        base_url="http://localhost:8081",
-    ) as client:
-        resolver = A2ACardResolver(
-            httpx_client=client, base_url="http://localhost:8081"
-        )
-        card = await resolver.get_agent_card()
-        sdk_client = ClientFactory(config=ClientConfig(httpx_client=client)).create(
-            card
-        )
+            payload = AlphaBotTaskPayload(
+                historical_prices=[90.0, 95.0, 100.0],
+                current_price=100.0,
+                portfolio_state=CommonPortfolioState(
+                    cash=10000.0,
+                    shares=0,
+                    total_value=10000.0,
+                ),
+                day=1,
+                short_sma_period=2,
+                long_sma_period=3,
+                trade_quantity=10,
+                riskguard_url="http://localhost:8080",
+                max_pos_size=5000.0,
+                max_concentration=0.5,
+            )
+            msg = A2AMessage(
+                message_id="msg-sim-1",
+                role=Role.ROLE_USER,
+                parts=[new_data_part(payload.model_dump(mode="json"))],
+                context_id="ctx-sim-1",
+            )
 
-        payload = AlphaBotTaskPayload(
-            historical_prices=[90.0, 95.0, 100.0],
-            current_price=100.0,
-            portfolio_state=CommonPortfolioState(
-                cash=10000.0, shares=0, total_value=10000.0
-            ),
-            day=1,
-            short_sma_period=2,
-            long_sma_period=3,
-            trade_quantity=10,
-            riskguard_url="http://localhost:8080",
-            max_pos_size=5000.0,
-            max_concentration=0.5,
-        )
-        msg = A2AMessage(
-            message_id="msg-sim-1",
-            role=Role.ROLE_USER,
-            parts=[new_data_part(payload.model_dump(mode="json"))],
-            context_id="ctx-sim-1",
-        )
+            stream = sdk_client.send_message(SendMessageRequest(message=msg))
+            _, response_artifact = await _parse_a2a_stream(stream)
 
-        stream = sdk_client.send_message(SendMessageRequest(message=msg))
-        _, response_artifact = await _parse_a2a_stream(stream)
-
-        assert response_artifact is not None
-        data = get_data_parts(response_artifact.parts)[0]
-        outcome = TradeOutcome.model_validate(data)
-        assert outcome.status == TradeStatus.APPROVED
-        assert "Approved by E2E RiskGuard" in outcome.reason
-        assert outcome.trade_proposal is not None
-        assert outcome.trade_proposal.ticker == "TEST"
-        assert outcome.trade_proposal.quantity == 10
+            assert response_artifact is not None
+            data = get_data_parts(response_artifact.parts)[0]
+            outcome = TradeOutcome.model_validate(data)
+            assert outcome.status == TradeStatus.APPROVED
+            assert "Approved by E2E RiskGuard" in outcome.reason
+            assert outcome.trade_proposal is not None
+            assert outcome.trade_proposal.ticker == "TEST"
+            assert outcome.trade_proposal.quantity == 10
+    finally:
+        await risk_client.aclose()
 
 
 @pytest.mark.asyncio
@@ -500,7 +522,8 @@ async def test_integration_error_responses() -> None:
 
     app = make_riskguard_app(mock_run_async)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://localhost:8080"
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://localhost:8080",
     ) as client:
         # Invalid JSON-RPC request format
         response = await client.post(
@@ -542,23 +565,30 @@ async def test_integration_concurrent_requests_isolation() -> None:
 
     app = make_riskguard_app(mock_run_async)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://localhost:8080"
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://localhost:8080",
     ) as client:
         resolver = A2ACardResolver(
-            httpx_client=client, base_url="http://localhost:8080"
+            httpx_client=client,
+            base_url="http://localhost:8080",
         )
         card = await resolver.get_agent_card()
         sdk_client = ClientFactory(config=ClientConfig(httpx_client=client)).create(
-            card
+            card,
         )
 
         async def call_rg(qty: int) -> str:
             payload = RiskCheckPayload(
                 trade_proposal=TradeProposal(
-                    action="BUY", ticker="TEST", quantity=qty, price=100.0
+                    action="BUY",
+                    ticker="TEST",
+                    quantity=qty,
+                    price=100.0,
                 ),
                 portfolio_state=CommonPortfolioState(
-                    cash=10000.0, shares=0, total_value=10000.0
+                    cash=10000.0,
+                    shares=0,
+                    total_value=10000.0,
                 ),
                 max_pos_size=5000.0,
                 max_concentration=0.5,

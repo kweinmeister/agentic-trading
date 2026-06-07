@@ -444,6 +444,6 @@ async def test_risk_tool_close_client_default() -> None:
     """Test that closing the tool closes the default internal httpx client when not injected."""
     with patch("httpx.AsyncClient.aclose", new_callable=AsyncMock) as mock_aclose:
         tool = A2ARiskCheckTool()
-        assert tool._httpx_client is not None
+        assert tool.httpx_client is not None
         await tool.close()
         mock_aclose.assert_called_once()
