@@ -150,7 +150,7 @@ def alphabot_message_factory(alphabot_input_data_factory):
             message_id=f"msg-{uuid.uuid4().hex[:8]}",
             role=Role.ROLE_USER,
             parts=[
-                new_data_part(input_data),
+                new_data_part(input_data.model_dump()),
             ],
         )
 
@@ -178,4 +178,4 @@ def risk_check_tool(
     """
     # The tool is now a real object, but its http client is a mock,
     # preventing real network calls.
-    return A2ARiskCheckTool()  # httpx_client=mock_httpx_client)
+    return A2ARiskCheckTool(httpx_client=mock_httpx_client)

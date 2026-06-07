@@ -250,30 +250,16 @@ def create_async_error_iterator(exception_class, *args, **kwargs) -> Any:
 
 
 @pytest.fixture
-def mock_a2a_sdk_components():
-    """Mock and patch the A2A SDK's ClientFactory and A2ACardResolver.
-
-    This provides a hermetic environment for testing functions that make A2A calls,
-    preventing real network requests. It returns a dictionary of the key mock
-    instances for use in tests.
-    """
+def mock_alphabot_a2a():
+    """Mock and patch A2A SDK components used by AlphaBot (a2a_risk_tool)."""
     from unittest.mock import AsyncMock, MagicMock, patch
-
-    from a2a.types import AgentCard
+    from a2a.types import AgentCard, AgentInterface
 
     with (
-        patch(
-            "alphabot.a2a_risk_tool.A2ACardResolver",
-        ) as mock_resolver_class_risk_tool,
-        patch("alphabot.a2a_risk_tool.ClientFactory") as mock_factory_class_risk_tool,
-        patch("simulator.main.A2ACardResolver") as mock_resolver_class_main,
-        patch("simulator.main.ClientFactory") as mock_factory_class_main,
+        patch("alphabot.a2a_risk_tool.A2ACardResolver") as mock_resolver_class,
+        patch("alphabot.a2a_risk_tool.ClientFactory") as mock_factory_class,
     ):
-        # --- Mock A2ACardResolver ---
-        mock_resolver_instance_risk_tool = mock_resolver_class_risk_tool.return_value
-        mock_resolver_instance_main = mock_resolver_class_main.return_value
-        from a2a.types import AgentCard, AgentInterface
-
+        mock_resolver_instance = mock_resolver_class.return_value
         mock_agent_card = AgentCard(
             name="MockRiskGuard",
             description="A mock RiskGuard agent card",
@@ -286,32 +272,66 @@ def mock_a2a_sdk_components():
                 ),
             ],
         )
-        mock_resolver_instance_risk_tool.get_agent_card = AsyncMock(
-            return_value=mock_agent_card,
-        )
-        mock_resolver_instance_main.get_agent_card = AsyncMock(
+        mock_resolver_instance.get_agent_card = AsyncMock(
             return_value=mock_agent_card,
         )
 
-        # --- Mock ClientFactory and the Client it creates ---
-        mock_factory_instance_risk_tool = mock_factory_class_risk_tool.return_value
-        mock_factory_instance_main = mock_factory_class_main.return_value
+        mock_factory_instance = mock_factory_class.return_value
         mock_a2a_client = AsyncMock()
-        mock_factory_instance_risk_tool.create.return_value = mock_a2a_client
-        mock_factory_instance_main.create.return_value = mock_a2a_client
+        mock_factory_instance.create.return_value = mock_a2a_client
 
-        # Also mock the config attribute that might be accessed
-        mock_factory_instance_risk_tool._config = MagicMock()
-        mock_factory_instance_risk_tool._config.httpx_client = AsyncMock()
-        mock_factory_instance_main._config = MagicMock()
-        mock_factory_instance_main._config.httpx_client = AsyncMock()
+        mock_factory_instance._config = MagicMock()
+        mock_factory_instance._config.httpx_client = AsyncMock()
 
         yield {
-            "mock_resolver_class": mock_resolver_class_main,
-            "mock_factory_class": mock_factory_class_main,
-            "mock_resolver_instance": mock_resolver_instance_main,
-            "mock_resolver_instance_risk_tool": mock_resolver_instance_risk_tool,
-            "mock_factory_instance": mock_factory_instance_main,
+            "mock_resolver_class": mock_resolver_class,
+            "mock_factory_class": mock_factory_class,
+            "mock_resolver_instance": mock_resolver_instance,
+            "mock_factory_instance": mock_factory_instance,
+            "mock_a2a_client": mock_a2a_client,
+            "mock_agent_card": mock_agent_card,
+        }
+
+
+@pytest.fixture
+def mock_simulator_a2a():
+    """Mock and patch A2A SDK components used by the Simulator (simulator.main)."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from a2a.types import AgentCard, AgentInterface
+
+    with (
+        patch("simulator.main.A2ACardResolver") as mock_resolver_class,
+        patch("simulator.main.ClientFactory") as mock_factory_class,
+    ):
+        mock_resolver_instance = mock_resolver_class.return_value
+        mock_agent_card = AgentCard(
+            name="MockRiskGuard",
+            description="A mock RiskGuard agent card",
+            version="1.0",
+            supported_interfaces=[
+                AgentInterface(
+                    protocol_binding="JSONRPC",
+                    protocol_version="1.0",
+                    url="http://mock-riskguard.com",
+                ),
+            ],
+        )
+        mock_resolver_instance.get_agent_card = AsyncMock(
+            return_value=mock_agent_card,
+        )
+
+        mock_factory_instance = mock_factory_class.return_value
+        mock_a2a_client = AsyncMock()
+        mock_factory_instance.create.return_value = mock_a2a_client
+
+        mock_factory_instance._config = MagicMock()
+        mock_factory_instance._config.httpx_client = AsyncMock()
+
+        yield {
+            "mock_resolver_class": mock_resolver_class,
+            "mock_factory_class": mock_factory_class,
+            "mock_resolver_instance": mock_resolver_instance,
+            "mock_factory_instance": mock_factory_instance,
             "mock_a2a_client": mock_a2a_client,
             "mock_agent_card": mock_agent_card,
         }

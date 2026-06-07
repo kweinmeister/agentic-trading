@@ -178,10 +178,25 @@ class RiskGuardAgentExecutor(AgentExecutor):
             await updater.complete()
 
         except Exception as e:
-            logger.exception("Error during RiskGuard execution")
+            from pydantic import ValidationError
+
+            logger.error(f"Error during RiskGuard execution: {e}", exc_info=True)
+            if isinstance(
+                e,
+                (
+                    ValidationError,
+                    ValueError,
+                    ConnectionError,
+                    RuntimeError,
+                    AttributeError,
+                ),
+            ):
+                error_text = str(e)
+            else:
+                error_text = "An unexpected server error occurred."
             # Create an error message to send back
             try:
-                error_msg = updater.new_agent_message(parts=[Part(text=str(e))])
+                error_msg = updater.new_agent_message(parts=[Part(text=error_text)])
                 await updater.failed(message=error_msg)
             except Exception as e_inner:
                 logger.exception(f"Failed to publish failure update: {e_inner}")

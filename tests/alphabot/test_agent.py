@@ -34,7 +34,6 @@ def test_alphabot_agent_instantiation() -> None:
         assert agent.ticker == "TEST_TICKER"
         assert agent.tools is not None
         assert len(agent.tools) == 1
-        assert agent.tools is not None
         assert isinstance(agent.tools[0], A2ARiskCheckTool)
         default_agent = AlphaBotAgent()
         assert default_agent.ticker == DEFAULT_TICKER
@@ -57,13 +56,7 @@ async def test_alphabot_run_async_impl_no_signal(
         "run_async",
         new_callable=AsyncMock,
     ) as mock_run_async:
-
-        async def mock_tool_response(*args, **kwargs):
-            # Simulate no response from the tool for this test case
-            if False:  # pragma: no cover
-                yield
-
-        mock_run_async.return_value = mock_tool_response()
+        mock_run_async.return_value = None
 
         input_data = alphabot_input_data_factory(
             historical_prices=[100, 101, 102, 103, 104, 105],
@@ -207,13 +200,28 @@ async def test_alphabot_run_async_impl_sell_approved(
         assert "approved_trade" in final_event.actions.state_delta
 
 
-@pytest.mark.asyncio
-async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent) -> None:
-    """Tests that _generate_signal correctly identifies a 'SELL' signal on a death cross."""
-    sma_short = 95.0
-    sma_long = 100.0
-    prev_sma_short = 102.0
-    prev_sma_long = 101.0
+@pytest.mark.parametrize(
+    ("sma_short", "sma_long", "prev_sma_short", "prev_sma_long", "expected_signal"),
+    [
+        (95.0, 100.0, 102.0, 101.0, "SELL"),  # Death cross
+        (10.0, 10.0, 10.0, 10.0, None),  # Equal, no crossover
+        (11.0, 10.0, 10.0, 10.0, "BUY"),  # Buy crossover (touch and separate)
+        (9.0, 10.0, 10.0, 10.0, "SELL"),  # Sell crossover (touch and separate)
+        (None, 100.0, 102.0, 101.0, None),  # Missing short SMA
+        (95.0, None, 102.0, 101.0, None),  # Missing long SMA
+        (95.0, 100.0, None, 101.0, None),  # Missing prev short SMA
+        (95.0, 100.0, 102.0, None, None),  # Missing prev long SMA
+    ],
+)
+def test_generate_signal_scenarios(
+    agent: AlphaBotAgent,
+    sma_short: float | None,
+    sma_long: float | None,
+    prev_sma_short: float | None,
+    prev_sma_long: float | None,
+    expected_signal: str | None,
+) -> None:
+    """Test _generate_signal crossover condition boundaries and missing values."""
     signal = agent._generate_signal(
         sma_short,
         sma_long,
@@ -221,16 +229,7 @@ async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent) -> None:
         prev_sma_long,
         "test_invocation",
     )
-    assert signal == "SELL"
-
-
-@pytest.mark.asyncio
-async def test_generate_signal_no_signal_sma_none(agent: AlphaBotAgent) -> None:
-    """Tests that _generate_signal returns None when any SMA value is None."""
-    assert agent._generate_signal(None, 100.0, 102.0, 101.0, "test_invocation") is None
-    assert agent._generate_signal(95.0, None, 102.0, 101.0, "test_invocation") is None
-    assert agent._generate_signal(95.0, 100.0, None, 101.0, "test_invocation") is None
-    assert agent._generate_signal(95.0, 100.0, 102.0, None, "test_invocation") is None
+    assert signal == expected_signal
 
 
 def test_determine_trade_proposal_no_buy_when_long(agent: AlphaBotAgent) -> None:
@@ -245,57 +244,6 @@ def test_determine_trade_proposal_no_buy_when_long(agent: AlphaBotAgent) -> None
         last_rejected_trade=None,
     )
     assert proposal is None
-
-
-@pytest.mark.asyncio
-async def test_alphabot_run_async_impl_sell_approved_e2e(
-    agent: AlphaBotAgent,
-    adk_ctx: InvocationContext,
-    alphabot_input_data_factory,
-    historical_prices_sell_signal,
-) -> None:
-    """Tests the full end-to-end flow for a successful 'SELL' trade."""
-    adk_ctx.session.state = {"should_be_long": True}
-
-    with patch.object(A2ARiskCheckTool, "run_async") as mock_run_async:
-        mock_run_async.return_value = Event(
-            author="a2a_risk_check",
-            content=genai_types.Content(
-                parts=[
-                    genai_types.Part(
-                        function_response=genai_types.FunctionResponse(
-                            name="risk_check_result",
-                            response={
-                                "approved": True,
-                                "reason": "Trade adheres to risk rules.",
-                            },
-                        ),
-                    ),
-                ],
-            ),
-            turn_complete=True,
-        )
-
-        input_data = alphabot_input_data_factory(
-            historical_prices=historical_prices_sell_signal,
-            current_price=66.0,
-            portfolio_state={"cash": 10000, "shares": 100, "total_value": 17000},
-            day=35,
-        )
-        adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())],
-        )
-
-        events = []
-        async for event in agent._run_async_impl(adk_ctx):
-            events.append(event)
-
-        assert len(events) == 2
-        final_event = events[1]
-        assert final_event.author == agent.name
-        assert "Trade Approved (A2A)" in _get_text(final_event)
-        assert final_event.actions.state_delta["should_be_long"] is False
-        assert "approved_trade" in final_event.actions.state_delta
 
 
 @pytest.mark.asyncio
@@ -492,15 +440,30 @@ async def test_alphabot_concurrency(
             day=35,
             portfolio_state={"cash": 10000, "shares": 0, "total_value": 10000},
         )
-        adk_ctx.user_content = genai_types.Content(
-            parts=[genai_types.Part(text=input_data.model_dump_json())],
-        )
 
-        async def run_agent_and_collect_events():
-            return [event async for event in agent._run_async_impl(adk_ctx)]
+        async def run_agent_and_collect_events(index: int):
+            # Create isolated sessions and contexts for each request
+            from google.adk.sessions import InMemorySessionService
+
+            session_service = InMemorySessionService()
+            session = await session_service.create_session(
+                app_name="test_app",
+                user_id=f"test_user_{index}",
+            )
+            session.state = {"should_be_long": False}
+            ctx = InvocationContext(
+                agent=agent,
+                session_service=session_service,
+                invocation_id=f"test_invocation_{index}",
+                session=session,
+            )
+            ctx.user_content = genai_types.Content(
+                parts=[genai_types.Part(text=input_data.model_dump_json())],
+            )
+            return [event async for event in agent._run_async_impl(ctx)]
 
         # Run the agent multiple times concurrently
-        tasks = [run_agent_and_collect_events() for _ in range(5)]
+        tasks = [run_agent_and_collect_events(i) for i in range(5)]
         results = await asyncio.gather(*tasks)
 
         # Each invocation should produce 2 events (proposal and final)
@@ -671,3 +634,94 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
         in _get_text(final_event)
     )
     assert not final_event.actions.state_delta
+
+
+def test_calculate_indicators_edge_cases(agent: AlphaBotAgent) -> None:
+    """Test _calculate_indicators boundary conditions."""
+    # 1. Exactly long_sma_period points
+    short_period = 3
+    long_period = 5
+    prices = [10.0, 11.0, 12.0, 13.0, 14.0]
+    sma_short, sma_long, prev_sma_short, prev_sma_long = agent._calculate_indicators(
+        prices,
+        short_period,
+        long_period,
+        "test_inv",
+    )
+    assert sma_short is not None
+    assert sma_long is not None
+    assert prev_sma_short is not None
+    assert (
+        prev_sma_long is None
+    )  # only 4 prices in previous, which is < 5 (long_period)
+
+    # 2. Short and long periods are equal
+    sma_short, sma_long, prev_sma_short, prev_sma_long = agent._calculate_indicators(
+        prices,
+        3,
+        3,
+        "test_inv",
+    )
+    assert sma_short == sma_long
+    assert prev_sma_short == prev_sma_long
+
+    # 3. Empty history
+    sma_short, sma_long, prev_sma_short, prev_sma_long = agent._calculate_indicators(
+        [],
+        short_period,
+        long_period,
+        "test_inv",
+    )
+    assert sma_short is None
+    assert sma_long is None
+    assert prev_sma_short is None
+    assert prev_sma_long is None
+
+
+def test_determine_trade_proposal_rejected_history(agent: AlphaBotAgent) -> None:
+    """Test _determine_trade_proposal respects rejected trade history."""
+    portfolio_state = PortfolioState(cash=10000, shares=0, total_value=10000)
+    last_rejected = {
+        "action": "BUY",
+        "ticker": "TECH",
+        "quantity": 10,
+        "price": 100.0,
+    }
+
+    agent.ticker = "TECH"
+
+    # 1. Identical trade proposal should be skipped
+    proposal = agent._determine_trade_proposal(
+        signal="BUY",
+        should_be_long=False,
+        portfolio_state=portfolio_state,
+        current_price=100.0,
+        trade_quantity=10,
+        last_rejected_trade=last_rejected,
+    )
+    assert proposal is None
+
+    # 2. Proposal with different quantity is allowed
+    proposal = agent._determine_trade_proposal(
+        signal="BUY",
+        should_be_long=False,
+        portfolio_state=portfolio_state,
+        current_price=100.0,
+        trade_quantity=20,
+        last_rejected_trade=last_rejected,
+    )
+    assert proposal is not None
+    assert proposal["quantity"] == 20
+
+    # 3. Proposal with different ticker is allowed
+    agent.ticker = "OTHER"
+    proposal = agent._determine_trade_proposal(
+        signal="BUY",
+        should_be_long=False,
+        portfolio_state=portfolio_state,
+        current_price=100.0,
+        trade_quantity=10,
+        last_rejected_trade=last_rejected,
+    )
+    assert proposal is not None
+    assert proposal["ticker"] == "OTHER"

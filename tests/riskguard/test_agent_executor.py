@@ -1,6 +1,6 @@
 """Tests for the RiskGuard agent executor."""
 
-from collections.abc import Callable
+from unittest.mock import AsyncMock
 
 import pytest
 from a2a.helpers import get_data_parts, new_data_part
@@ -12,23 +12,6 @@ from a2a.types.a2a_pb2 import TaskArtifactUpdateEvent, TaskStatusUpdateEvent
 
 from riskguard.agent_executor import RiskGuardAgentExecutor
 from tests.conftest import get_executor_results
-
-
-@pytest.fixture
-def riskguard_message_factory(
-    riskguard_input_data_factory,
-) -> Callable[..., Message]:
-    """Create a complete A2A Message for RiskGuard tests."""
-
-    def _create_message(**kwargs) -> Message:
-        input_data = riskguard_input_data_factory(**kwargs)
-        return Message(
-            message_id="test_message_id",
-            role=Role.ROLE_USER,
-            parts=[new_data_part(input_data.model_dump())],
-        )
-
-    return _create_message
 
 
 @pytest.mark.asyncio
@@ -176,44 +159,126 @@ async def test_execute_adk_runner_exception(
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
     assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
-    assert "ADK Borked" in enqueued_message.status.message.parts[0].text
+    assert (
+        "An unexpected server error occurred."
+        in enqueued_message.status.message.parts[0].text
+    )
 
 
 @pytest.mark.asyncio
-async def test_execute_handles_adk_runner_exception(
+async def test_execute_session_continuity(
     riskguard_message_factory,
     mock_runner_factory,
     event_queue,
+    adk_session,
+    adk_mock_riskguard_generator,
 ) -> None:
-    """Test that the executor handles an ADK runner failure gracefully."""
-    # Arrange
-    mock_runner = mock_runner_factory("riskguard.agent_executor")
-    # Simulate an exception during the ADK agent's execution
-    mock_runner.run_async.side_effect = Exception("ADK agent failed!")
-
+    """Test that RiskGuard reuses an existing session if present."""
+    mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
     request_message = riskguard_message_factory()
+
+    mock_runner_instance.session_service.get_session = AsyncMock(
+        return_value=adk_session
+    )
+    mock_runner_instance.session_service.create_session = AsyncMock()
+    mock_runner_instance.run_async.return_value = adk_mock_riskguard_generator(
+        result_name="risk_check_result",
+        result_data={"approved": True, "reason": "Session test"},
+    )
+
+    executor = RiskGuardAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-existing-session-456",
+            task_id="test-task-123",
+        ),
+        event_queue=event_queue,
+    )
+
+    mock_runner_instance.session_service.get_session.assert_called_once()
+    mock_runner_instance.session_service.create_session.assert_not_called()
+    await get_executor_results(event_queue)
+    await event_queue.close()
+
+
+@pytest.mark.asyncio
+async def test_execute_get_session_exception_fallback(
+    riskguard_message_factory,
+    mock_runner_factory,
+    event_queue,
+    adk_session,
+    adk_mock_riskguard_generator,
+) -> None:
+    """Test that if get_session raises an exception, the executor falls back to create_session."""
+    mock_runner_instance = mock_runner_factory("riskguard.agent_executor")
+    request_message = riskguard_message_factory()
+
+    mock_runner_instance.session_service.get_session = AsyncMock(
+        side_effect=Exception("DB Connection Error")
+    )
+    mock_runner_instance.session_service.create_session = AsyncMock(
+        return_value=adk_session
+    )
+    mock_runner_instance.run_async.return_value = adk_mock_riskguard_generator(
+        result_name="risk_check_result",
+        result_data={"approved": True, "reason": "Fallback test"},
+    )
+
+    executor = RiskGuardAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-existing-session-456",
+            task_id="test-task-123",
+        ),
+        event_queue=event_queue,
+    )
+
+    mock_runner_instance.session_service.get_session.assert_called_once()
+    mock_runner_instance.session_service.create_session.assert_called_once()
+    await get_executor_results(event_queue)
+    await event_queue.close()
+
+
+@pytest.mark.asyncio
+async def test_execute_missing_context_id_raises_value_error(
+    event_queue,
+) -> None:
+    """Test that execute raises ValueError if context_id is missing/None."""
+    executor = RiskGuardAgentExecutor()
     context = RequestContext(
         ServerCallContext(),
-        request=MessageSendParams(message=request_message),
-        context_id="test-context-456",
+        context_id=None,
+    )
+    with pytest.raises(ValueError, match="Context ID is missing, cannot execute."):
+        await executor.execute(context, event_queue)
+    await event_queue.close()
+
+
+@pytest.mark.asyncio
+async def test_execute_cancel(
+    event_queue,
+) -> None:
+    """Test that cancel() enqueues a cancel task status update."""
+    context = RequestContext(
+        ServerCallContext(),
+        context_id="test-context-123",
         task_id="test-task-123",
     )
 
-    # Act
     executor = RiskGuardAgentExecutor()
-    executor._adk_runner = mock_runner  # Inject the mock runner
+    await executor.cancel(context, event_queue)
 
-    await executor.execute(context, event_queue)
-
-    # Dequeue and verify results
-    enqueued_message, _events = await get_executor_results(event_queue)
-
+    _, _events = await get_executor_results(event_queue)
     await event_queue.close()
-    assert event_queue.is_closed()
 
-    # The enqueued event is a TaskStatusUpdateEvent containing error details
-    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
-    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
-
-    # The message part contains the error
-    assert "ADK agent failed!" in enqueued_message.status.message.parts[0].text
+    assert any(
+        isinstance(e, TaskStatusUpdateEvent)
+        and e.status.state == TaskState.TASK_STATE_CANCELED
+        for e in _events
+    )

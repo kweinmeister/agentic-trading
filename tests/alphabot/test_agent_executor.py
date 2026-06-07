@@ -1,6 +1,5 @@
 """Tests for the AlphaBot agent executor."""
 
-from collections.abc import Callable
 from unittest.mock import AsyncMock
 
 import pytest
@@ -21,23 +20,6 @@ from google.genai import types as genai_types
 
 from alphabot.agent_executor import AlphaBotAgentExecutor
 from tests.conftest import get_executor_results
-
-
-@pytest.fixture
-def alphabot_message_factory(
-    alphabot_input_data_factory,
-) -> Callable[..., Message]:
-    """Create a complete A2A Message for AlphaBot tests."""
-
-    def _create_message(**kwargs) -> Message:
-        input_data = alphabot_input_data_factory(**kwargs)
-        return Message(
-            message_id="test_message_id",
-            role=Role.ROLE_USER,
-            parts=[new_data_part(input_data.model_dump())],
-        )
-
-    return _create_message
 
 
 @pytest.mark.asyncio
@@ -229,46 +211,6 @@ async def test_execute_adk_runner_exception(
 
 
 @pytest.mark.asyncio
-async def test_execute_handles_adk_runner_exception(
-    alphabot_message_factory,
-    mock_runner_factory,
-    event_queue,
-) -> None:
-    """Test that if the ADK runner fails, the executor enqueues an error message."""
-    # Arrange
-    mock_runner = mock_runner_factory("alphabot.agent_executor")
-    # Simulate an exception during the ADK agent's execution
-    mock_runner.run_async.side_effect = Exception("ADK agent failed!")
-
-    request_message = alphabot_message_factory()
-    context = RequestContext(
-        ServerCallContext(),
-        request=MessageSendParams(message=request_message),
-    )
-
-    # Act
-    executor = AlphaBotAgentExecutor()
-    executor._adk_runner = mock_runner  # Inject the mock runner
-
-    await executor.execute(context, event_queue)
-
-    # Dequeue and verify results
-    enqueued_message, _events = await get_executor_results(event_queue)
-
-    await event_queue.close()
-    assert event_queue.is_closed()
-
-    # The enqueued event is a TaskStatusUpdateEvent containing error details
-    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
-    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
-
-    assert (
-        "An unexpected server error occurred."
-        in enqueued_message.status.message.parts[0].text
-    )
-
-
-@pytest.mark.asyncio
 async def test_execute_returns_dict_not_string(
     alphabot_message_factory,
     mock_runner_factory,
@@ -321,3 +263,156 @@ async def test_execute_returns_dict_not_string(
         and e.status.state == TaskState.TASK_STATE_COMPLETED
         for e in _events
     )
+
+
+@pytest.mark.asyncio
+async def test_execute_session_continuity(
+    mock_runner_factory,
+    event_queue,
+    alphabot_message_factory,
+    adk_session,
+) -> None:
+    """Test that existing session is reused (session continuity)."""
+    mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
+    request_message = alphabot_message_factory()
+    context = RequestContext(
+        ServerCallContext(),
+        request=MessageSendParams(message=request_message),
+        context_id="test-existing-session-123",
+        task_id="test-task-123",
+    )
+
+    mock_runner_instance.session_service.get_session = AsyncMock(
+        return_value=adk_session
+    )
+    mock_runner_instance.session_service.create_session = AsyncMock()
+
+    async def mock_run_async_generator():
+        yield Event(author="test", turn_complete=True)
+
+    mock_runner_instance.run_async.return_value = mock_run_async_generator()
+
+    executor = AlphaBotAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+    await executor.execute(context, event_queue)
+
+    mock_runner_instance.session_service.get_session.assert_called_once()
+    mock_runner_instance.session_service.create_session.assert_not_called()
+    await get_executor_results(event_queue)
+    await event_queue.close()
+
+
+@pytest.mark.asyncio
+async def test_execute_no_action_path(
+    mock_runner_factory,
+    event_queue,
+    alphabot_message_factory,
+    adk_session,
+) -> None:
+    """Test executor when agent decides NO_ACTION."""
+    mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
+    request_message = alphabot_message_factory()
+    context = RequestContext(
+        ServerCallContext(),
+        request=MessageSendParams(message=request_message),
+        context_id="test-context-123",
+        task_id="test-task-123",
+    )
+
+    mock_runner_instance.session_service.get_session = AsyncMock(
+        return_value=adk_session
+    )
+
+    async def mock_run_async_generator():
+        yield Event(
+            author="test",
+            actions=EventActions(state_delta={}),  # No trades proposed
+        )
+        yield Event(
+            author="test",
+            content=genai_types.Content(
+                parts=[genai_types.Part(text="No trades today.")]
+            ),
+            turn_complete=True,
+        )
+
+    mock_runner_instance.run_async.return_value = mock_run_async_generator()
+
+    executor = AlphaBotAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+    await executor.execute(context, event_queue)
+
+    enqueued_message, _events = await get_executor_results(event_queue)
+    await event_queue.close()
+
+    assert isinstance(enqueued_message, TaskArtifactUpdateEvent)
+    data_parts = get_data_parts(enqueued_message.artifact.parts)
+    assert data_parts[0]["status"] == "NO_ACTION"
+    assert data_parts[0]["reason"] == "No trades today."
+
+
+@pytest.mark.asyncio
+async def test_execute_cancel(
+    event_queue,
+) -> None:
+    """Test that cancel() enqueues a cancel task status update."""
+    context = RequestContext(
+        ServerCallContext(),
+        context_id="test-context-123",
+        task_id="test-task-123",
+    )
+
+    executor = AlphaBotAgentExecutor()
+    await executor.cancel(context, event_queue)
+
+    _, _events = await get_executor_results(event_queue)
+    await event_queue.close()
+
+    assert any(
+        isinstance(e, TaskStatusUpdateEvent)
+        and e.status.state == TaskState.TASK_STATE_CANCELED
+        for e in _events
+    )
+
+
+@pytest.mark.asyncio
+async def test_execute_event_queue_lifecycle_on_exception(
+    mock_runner_factory,
+    event_queue,
+    alphabot_message_factory,
+) -> None:
+    """Verify event queue lifecycle is handled correctly even on exceptions."""
+    mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
+    mock_runner_instance.run_async.side_effect = Exception("ADK agent failed!")
+    request_message = alphabot_message_factory()
+    context = RequestContext(
+        ServerCallContext(),
+        request=MessageSendParams(message=request_message),
+        context_id="test-context-123",
+        task_id="test-task-123",
+    )
+
+    executor = AlphaBotAgentExecutor()
+    executor._adk_runner = mock_runner_instance
+
+    try:
+        await executor.execute(context, event_queue)
+    finally:
+        await get_executor_results(event_queue)
+        await event_queue.close()
+        assert event_queue.is_closed()
+
+
+@pytest.mark.asyncio
+async def test_execute_missing_context_id_raises_value_error(
+    event_queue,
+) -> None:
+    """Test that execute raises ValueError if context_id is missing/None."""
+    executor = AlphaBotAgentExecutor()
+    context = RequestContext(
+        ServerCallContext(),
+        context_id=None,
+    )
+    with pytest.raises(ValueError, match="Context ID is missing, cannot execute."):
+        await executor.execute(context, event_queue)
+    await event_queue.close()

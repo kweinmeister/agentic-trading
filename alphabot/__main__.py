@@ -36,6 +36,19 @@ alphabot_default_host = parsed_default_url.hostname or "127.0.0.1"
 alphabot_default_port = parsed_default_url.port or 8081
 
 
+def create_app(agent_card, request_handler) -> FastAPI:
+    """Create the FastAPI app with mounted A2A routes."""
+    agent_card_routes = create_agent_card_routes(agent_card)
+    jsonrpc_routes = create_jsonrpc_routes(request_handler, rpc_url="/a2a/jsonrpc")
+    rest_routes = create_rest_routes(request_handler, path_prefix="/a2a/rest")
+
+    app = FastAPI()
+    app.routes.extend(jsonrpc_routes)
+    app.routes.extend(agent_card_routes)
+    app.routes.extend(rest_routes)
+    return app
+
+
 @click.command()
 @click.option(
     "--host",
@@ -118,14 +131,7 @@ def main(host: str, port: int, proxy_headers: bool) -> None:
     )
 
     try:
-        agent_card_routes = create_agent_card_routes(agent_card)
-        jsonrpc_routes = create_jsonrpc_routes(request_handler, rpc_url="/a2a/jsonrpc")
-        rest_routes = create_rest_routes(request_handler, path_prefix="/a2a/rest")
-
-        app = FastAPI()
-        app.routes.extend(jsonrpc_routes)
-        app.routes.extend(agent_card_routes)
-        app.routes.extend(rest_routes)
+        app = create_app(agent_card, request_handler)
     except Exception:
         logger.exception("Error initializing routes and FastAPI application")
         raise

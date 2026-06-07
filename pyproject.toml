@@ -23,10 +23,12 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore:BaseAgentConfig is deprecated:DeprecationWarning",
     "ignore:Using `httpx` with `starlette.testclient` is deprecated:starlette.exceptions.StarletteDeprecationWarning",
+    "ignore:label\\(\\) is deprecated:DeprecationWarning",
 ]
 
 [[tool.uv.index]]
