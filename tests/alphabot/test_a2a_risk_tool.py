@@ -14,6 +14,7 @@ from a2a.types import (
     Message,
     Role,
 )
+from google.adk.agents.context import Context
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.sessions import Session
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
@@ -26,7 +27,7 @@ from tests.conftest import create_async_error_iterator
 
 
 @pytest.fixture
-def tool_context(adk_session: Session):
+def tool_context(adk_session: Session) -> Context:
     """Fixture to create a mock ToolContext."""
     return ToolContext(
         invocation_context=InvocationContext(
@@ -53,7 +54,7 @@ def create_success_response_message(result_data: dict) -> Message:
 def _verify_a2a_payload(
     mock_a2a_client: MagicMock,
     args: dict,
-):
+) -> None:
     """Verify the payload sent to the A2AClient."""
     # The new client sends the message directly, not wrapped in a request object
     mock_a2a_client.send_message.assert_called_once()
@@ -74,7 +75,7 @@ async def test_run_async_approved(
     mock_a2a_sdk_components,
     test_agent_card: AgentCard,
     mock_a2a_send_message_generator,
-):
+) -> None:
     """Test using shared fixtures for input data."""
     # Arrange
     args = {
@@ -125,7 +126,7 @@ async def test_run_async_rejected(
     mock_a2a_sdk_components,
     test_agent_card: AgentCard,
     mock_a2a_send_message_generator,
-):
+) -> None:
     """Test the tool's run_async method for a rejected trade."""
     # Arrange
     args = {
@@ -151,15 +152,6 @@ async def test_run_async_rejected(
     # Replace the send_message method directly with our async generator
     mock_a2a_client.send_message = mock_send_message
 
-    # Skip the verification that requires call tracking
-    def skip_verification(mock_a2a_client, args):
-        pass  # Do nothing for now
-
-    # Temporarily replace the verification function
-    import tests.alphabot.test_a2a_risk_tool as test_module
-
-    test_module._verify_a2a_payload = skip_verification
-
     # Act
     event = await risk_check_tool.run_async(args=args, tool_context=tool_context)
 
@@ -181,7 +173,7 @@ async def test_run_async_handles_malformed_message(
     mock_a2a_sdk_components,
     test_agent_card: AgentCard,
     mock_a2a_send_message_generator,
-):
+) -> None:
     """Tests that the tool gracefully handles a malformed A2A response."""
     # Arrange
     args = {
@@ -209,15 +201,6 @@ async def test_run_async_handles_malformed_message(
     # Replace the send_message method directly with our async generator
     mock_a2a_client.send_message = mock_send_message
 
-    # Skip the verification that requires call tracking
-    def skip_verification(mock_a2a_client, args):
-        pass  # Do nothing for now
-
-    # Temporarily replace the verification function
-    import tests.alphabot.test_a2a_risk_tool as test_module
-
-    test_module._verify_a2a_payload = skip_verification
-
     # Act
     event = await risk_check_tool.run_async(args=args, tool_context=tool_context)
 
@@ -239,7 +222,7 @@ async def test_run_async_a2a_client_timeout(
     tool_context: ToolContext,
     mock_a2a_sdk_components,
     test_agent_card: AgentCard,
-):
+) -> None:
     """Tests that the tool handles an A2AClientTimeoutError."""
     # Arrange
     args = {
@@ -282,7 +265,7 @@ async def test_run_async_a2a_http_error(
     tool_context: ToolContext,
     mock_a2a_sdk_components,
     test_agent_card: AgentCard,
-):
+) -> None:
     """Tests that the tool handles an A2AClientHTTPError."""
     # Arrange
     args = {
@@ -327,7 +310,7 @@ async def test_run_async_transport_resolution_error(
     risk_check_tool: A2ARiskCheckTool,
     tool_context: ToolContext,
     mock_a2a_sdk_components,
-):
+) -> None:
     """Tests that the tool handles an A2ATransportResolutionError."""
     args = {
         "trade_proposal": {
@@ -345,9 +328,11 @@ async def test_run_async_transport_resolution_error(
 
     # Mock the agent card resolution to raise an AgentCardResolutionError
     error_message = "Could not resolve agent card"
-    mock_resolver_instance_risk_tool.get_agent_card.side_effect = AgentCardResolutionError(
-        message=error_message,
-        status_code=503,
+    mock_resolver_instance_risk_tool.get_agent_card.side_effect = (
+        AgentCardResolutionError(
+            message=error_message,
+            status_code=503,
+        )
     )
 
     # Act
@@ -363,7 +348,5 @@ async def test_run_async_transport_resolution_error(
     assert response_data["approved"] is False
 
     # Verify that the error message matches the expected format
-    expected_reason = (
-        f"A2A SDK Error: {error_message}. Is RiskGuard running?"
-    )
+    expected_reason = f"A2A SDK Error: {error_message}. Is RiskGuard running?"
     assert response_data["reason"] == expected_reason

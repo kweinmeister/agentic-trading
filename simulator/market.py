@@ -2,7 +2,6 @@
 
 import random
 from collections import deque
-from typing import List
 
 
 class MarketDataSimulator:
@@ -14,7 +13,7 @@ class MarketDataSimulator:
         volatility: float = 0.02,
         trend: float = 0.0005,
         history_size: int = 60,
-    ):
+    ) -> None:
         """Initialize the market data simulator.
 
         Args:
@@ -46,7 +45,7 @@ class MarketDataSimulator:
         self._generate_and_add_price()
         return self.current_price
 
-    def get_historical_prices(self) -> List[float]:
+    def get_historical_prices(self) -> list[float]:
         """Return the current list of historical prices."""
         return list(self.history)
 

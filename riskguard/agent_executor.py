@@ -4,9 +4,11 @@ import json
 import logging
 from typing import Any
 
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.helpers import get_data_parts, new_data_part, new_message as new_agent_parts_message
+from a2a.server.tasks.task_updater import TaskUpdater
+from a2a.types import Part, Task, TaskState, TaskStatus
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types as genai_types
@@ -19,7 +21,7 @@ logger = logging.getLogger(__name__)
 class RiskGuardAgentExecutor(AgentExecutor):
     """Executes the RiskGuard ADK agent logic in response to A2A requests."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the RiskGuardAgentExecutor."""
         self._adk_agent = riskguard_adk_agent
         self._adk_runner = Runner(
@@ -30,14 +32,37 @@ class RiskGuardAgentExecutor(AgentExecutor):
         )
         logger.info("RiskGuardAgentExecutor initialized with ADK Runner.")
 
-    async def execute(self, context: RequestContext, event_queue: EventQueue):
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Receive a trade proposal and run it through the ADK agent.
 
         The result is immediately returned in a single Message event.
         """
+        if not context.context_id:
+            msg = "Context ID is missing, cannot execute."
+            raise ValueError(msg)
+
+        updater = TaskUpdater(
+            event_queue=event_queue,
+            task_id=context.task_id or "",
+            context_id=context.context_id,
+        )
         try:
-            if not context.context_id:
-                raise ValueError("Context ID is missing, cannot execute.")
+            # Enqueue the initial Task object to start task mode
+            await event_queue.enqueue_event(
+                Task(
+                    id=context.task_id or "",
+                    context_id=context.context_id or "",
+                    status=TaskStatus(state=TaskState.TASK_STATE_SUBMITTED),
+                    history=[context.message] if context.message else [],
+                ),
+            )
+
+            # Set task state to WORKING
+            await updater.start_work(
+                message=updater.new_agent_message(
+                    parts=[Part(text="Checking trade risk...")],
+                ),
+            )
 
             agent_input_data = None
             if context.message and context.message.parts:
@@ -50,8 +75,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
                 or "trade_proposal" not in agent_input_data
                 or "portfolio_state" not in agent_input_data
             ):
+                msg = "Missing 'trade_proposal' or 'portfolio_state' in data payload"
                 raise ValueError(
-                    "Missing 'trade_proposal' or 'portfolio_state' in data payload",
+                    msg,
                 )
 
             agent_input_json = json.dumps(agent_input_data)
@@ -141,34 +167,32 @@ class RiskGuardAgentExecutor(AgentExecutor):
                             risk_result_dict = response_data
                             break
 
-            # Instead of using TaskUpdater, create and enqueue a single message
-            final_message = new_agent_parts_message(
+            # Save the result as artifact
+            await updater.add_artifact(
                 parts=[new_data_part(risk_result_dict)],
-                context_id=context.context_id,
-                task_id=context.task_id,  # Keep task_id for correlation
+                name="response",
+                last_chunk=True,
             )
-            await event_queue.enqueue_event(final_message)
+
+            # Mark task as COMPLETED
+            await updater.complete()
 
         except Exception as e:
             logger.exception("Error during RiskGuard execution")
             # Create an error message to send back
-            error_message = new_agent_parts_message(
-                parts=[
-                    new_data_part({
-                        "approved": False,
-                        "reason": f"An internal error occurred: {e}",
-                    }),
-                ],
-                context_id=context.context_id,
-                task_id=context.task_id,
-            )
-            await event_queue.enqueue_event(error_message)
-        finally:
-            # Always close the queue after the single event is sent.
-            await event_queue.close()
+            try:
+                error_msg = updater.new_agent_message(parts=[Part(text=str(e))])
+                await updater.failed(message=error_msg)
+            except Exception as e_inner:
+                logger.exception(f"Failed to publish failure update: {e_inner}")
 
-    async def cancel(self, context: RequestContext, event_queue: EventQueue):
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Cancel the agent execution."""
         # This synchronous agent has nothing to cancel.
         logger.warning("Cancel called on synchronous RiskGuard agent; nothing to do.")
-        await event_queue.close()
+        updater = TaskUpdater(
+            event_queue=event_queue,
+            task_id=context.task_id or "",
+            context_id=context.context_id or "",
+        )
+        await updater.cancel()

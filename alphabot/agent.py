@@ -3,7 +3,7 @@
 import logging
 import uuid
 from collections.abc import AsyncGenerator
-from typing import List, Optional
+from typing import Any
 
 from google.adk.agents import BaseAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -26,15 +26,15 @@ logger = logging.getLogger(__name__)
 class AlphaBotAgent(BaseAgent):
     """ADK Agent implementing the AlphaBot trading logic."""
 
-    ticker: Optional[str] = None
-    tools: Optional[List[BaseTool]] = None
+    ticker: str | None = None
+    tools: list[BaseTool] | None = None
 
     def __init__(
         self,
         stock_ticker: str = DEFAULT_TICKER,
         agent_name: str = "AlphaBot",
         **kwargs,
-    ):
+    ) -> None:
         """Initialize the AlphaBotAgent."""
         a2a_tool = A2ARiskCheckTool()
         agent_description = (
@@ -51,7 +51,7 @@ class AlphaBotAgent(BaseAgent):
 
     def _calculate_indicators(
         self,
-        historical_prices: List[float],
+        historical_prices: list[float],
         short_period: int,
         long_period: int,
         invocation_id: str,
@@ -136,13 +136,13 @@ class AlphaBotAgent(BaseAgent):
 
     def _determine_trade_proposal(
         self,
-        signal: Optional[str],
+        signal: str | None,
         should_be_long: bool,
         portfolio_state: PortfolioState,
         current_price: float,
         trade_quantity: int,
-        last_rejected_trade: Optional[dict],
-    ) -> Optional[dict]:
+        last_rejected_trade: dict | None,
+    ) -> dict | None:
         """Determine the trade proposal based on signal and current state."""
         trade_proposal = None
         ticker = self.ticker or DEFAULT_TICKER
@@ -284,7 +284,7 @@ class AlphaBotAgent(BaseAgent):
         approved = risk_result.get("approved", False)
         reason = risk_result.get("reason", "No reason provided.")
 
-        state_delta_content = {}
+        state_delta_content: dict[str, Any] = {}
         new_should_be_long_value = None
 
         if approved:

@@ -1,11 +1,12 @@
 """Global fixtures for all tests."""
 
-from typing import Optional  # Import Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from a2a.server.events import EventQueue
+from a2a.server.events import EventQueueLegacy
+from a2a.types.a2a_pb2 import AgentCard
 from google.adk.agents import BaseAgent  # Import BaseAgent for type hinting
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
@@ -16,34 +17,17 @@ from common.models import PortfolioState, TradeProposal
 
 
 @pytest.fixture
-def event_queue() -> EventQueue:
+def event_queue() -> EventQueueLegacy:
     """Provide a new EventQueue instance for each test."""
-    return EventQueue()
+    return EventQueueLegacy()
 
 
 @pytest.fixture
-def test_agent_card():
+def test_agent_card() -> AgentCard:
     """Fixture to create a valid AgentCard for testing."""
-    from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+    from a2a.types import AgentCapabilities, AgentCard, AgentInterface, AgentSkill
 
-    global _agent_card_urls
-    if "_agent_card_urls" not in globals():
-        _agent_card_urls = {}
-        _orig_setattr = AgentCard.__setattr__
-        _orig_getattribute = AgentCard.__getattribute__
-        def _new_setattr(self, name, value):
-            if name == "url":
-                _agent_card_urls[id(self)] = value
-            else:
-                _orig_setattr(self, name, value)
-        def _new_getattribute(self, name):
-            if name == "url":
-                return _agent_card_urls.get(id(self))
-            return _orig_getattribute(self, name)
-        AgentCard.__setattr__ = _new_setattr
-        AgentCard.__getattribute__ = _new_getattribute
-
-    card = AgentCard(
+    return AgentCard(
         name="Test Agent",
         description="A test agent.",
         version="1.0.0",
@@ -59,9 +43,14 @@ def test_agent_card():
         ],
         default_input_modes=["data"],
         default_output_modes=["data"],
+        supported_interfaces=[
+            AgentInterface(
+                protocol_binding="JSONRPC",
+                protocol_version="1.0",
+                url="http://test-agent.com",
+            ),
+        ],
     )
-    card.url = "http://test-agent.com"
-    return card
 
 
 @pytest_asyncio.fixture
@@ -76,7 +65,7 @@ async def adk_session() -> Session:
 @pytest.fixture
 def adk_ctx(
     adk_session: Session,
-    agent: Optional[BaseAgent] = None,
+    agent: BaseAgent | None = None,
 ) -> InvocationContext:  # Use Optional
     """Provide a base InvocationContext."""
     # If no agent is provided, use a MagicMock to satisfy the BaseAgent type hint
@@ -209,15 +198,32 @@ def mock_a2a_send_message_generator():
         """
 
         async def mock_send_message_generator(*args, **kwargs):
+            from a2a.types.a2a_pb2 import (
+                Message,
+                StreamResponse,
+                Task,
+                TaskArtifactUpdateEvent,
+                TaskStatusUpdateEvent,
+            )
+
             for value in yield_values:
-                yield value
+                if isinstance(value, Message):
+                    yield StreamResponse(message=value)
+                elif isinstance(value, Task):
+                    yield StreamResponse(task=value)
+                elif isinstance(value, TaskStatusUpdateEvent):
+                    yield StreamResponse(status_update=value)
+                elif isinstance(value, TaskArtifactUpdateEvent):
+                    yield StreamResponse(artifact_update=value)
+                else:
+                    yield value
 
         return mock_send_message_generator
 
     return _create_mock_send_message
 
 
-def create_async_error_iterator(exception_class, *args, **kwargs):
+def create_async_error_iterator(exception_class, *args, **kwargs) -> Any:
     """Create an async iterator that raises an exception on the first call to __anext__.
 
     Args:
@@ -231,7 +237,7 @@ def create_async_error_iterator(exception_class, *args, **kwargs):
     """
 
     class MockSendMessageErrorIterator:
-        def __init__(self, exception):
+        def __init__(self, exception) -> None:
             self.exception = exception
 
         def __aiter__(self):
@@ -266,30 +272,20 @@ def mock_a2a_sdk_components():
         # --- Mock A2ACardResolver ---
         mock_resolver_instance_risk_tool = mock_resolver_class_risk_tool.return_value
         mock_resolver_instance_main = mock_resolver_class_main.return_value
-        from a2a.types import AgentCard
-        global _agent_card_urls
-        if "_agent_card_urls" not in globals():
-            _agent_card_urls = {}
-            _orig_setattr = AgentCard.__setattr__
-            _orig_getattribute = AgentCard.__getattribute__
-            def _new_setattr(self, name, value):
-                if name == "url":
-                    _agent_card_urls[id(self)] = value
-                else:
-                    _orig_setattr(self, name, value)
-            def _new_getattribute(self, name):
-                if name == "url":
-                    return _agent_card_urls.get(id(self))
-                return _orig_getattribute(self, name)
-            AgentCard.__setattr__ = _new_setattr
-            AgentCard.__getattribute__ = _new_getattribute
+        from a2a.types import AgentCard, AgentInterface
 
         mock_agent_card = AgentCard(
             name="MockRiskGuard",
             description="A mock RiskGuard agent card",
             version="1.0",
+            supported_interfaces=[
+                AgentInterface(
+                    protocol_binding="JSONRPC",
+                    protocol_version="1.0",
+                    url="http://mock-riskguard.com",
+                ),
+            ],
         )
-        mock_agent_card.url = "http://mock-riskguard.com"
         mock_resolver_instance_risk_tool.get_agent_card = AsyncMock(
             return_value=mock_agent_card,
         )
@@ -319,3 +315,41 @@ def mock_a2a_sdk_components():
             "mock_a2a_client": mock_a2a_client,
             "mock_agent_card": mock_agent_card,
         }
+
+
+async def get_executor_results(event_queue):
+    from a2a.types import TaskState
+    from a2a.types.a2a_pb2 import TaskArtifactUpdateEvent, TaskStatusUpdateEvent
+
+    events = []
+    # Note: EventQueueLegacy in A2A SDK v1.0 does not define an 'is_empty()' or 'empty()'
+    # method, so checking event_queue.queue.empty() is the only synchronous way to check.
+    while not event_queue.queue.empty():
+        ev = await event_queue.dequeue_event()
+        events.append(ev)
+        event_queue.task_done()
+    artifact_ev = next(
+        (
+            e
+            for e in events
+            if isinstance(e, TaskArtifactUpdateEvent) and e.artifact.name == "response"
+        ),
+        None,
+    )
+    if artifact_ev:
+        return artifact_ev, events
+    status_ev = next(
+        (
+            e
+            for e in events
+            if isinstance(e, TaskStatusUpdateEvent)
+            and e.status.state
+            in {
+                TaskState.TASK_STATE_COMPLETED,
+                TaskState.TASK_STATE_FAILED,
+                TaskState.TASK_STATE_REJECTED,
+            }
+        ),
+        None,
+    )
+    return status_ev, events

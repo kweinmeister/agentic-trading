@@ -5,7 +5,7 @@ import random
 from simulator.market import MarketDataSimulator
 
 
-def test_market_data_simulator_initialization():
+def test_market_data_simulator_initialization() -> None:
     """Test MarketDataSimulator initialization with default values."""
     simulator = MarketDataSimulator()
 
@@ -16,7 +16,7 @@ def test_market_data_simulator_initialization():
     assert simulator.history[0] == 100.0
 
 
-def test_market_data_simulator_custom_initialization():
+def test_market_data_simulator_custom_initialization() -> None:
     """Test MarketDataSimulator initialization with custom values."""
     initial_price = 50.0
     volatility = 0.05
@@ -37,7 +37,7 @@ def test_market_data_simulator_custom_initialization():
     assert simulator.history[0] == initial_price
 
 
-def test_market_data_simulator_next_price():
+def test_market_data_simulator_next_price() -> None:
     """Test that next_price generates a new price and updates history."""
     simulator = MarketDataSimulator(initial_price=100.0, history_size=5)
 
@@ -54,7 +54,7 @@ def test_market_data_simulator_next_price():
         assert price > 0
 
 
-def test_market_data_simulator_history_limit():
+def test_market_data_simulator_history_limit() -> None:
     """Test that history respects the history_size limit."""
     history_size = 5
     simulator = MarketDataSimulator(initial_price=100.0, history_size=history_size)
@@ -67,7 +67,7 @@ def test_market_data_simulator_history_limit():
     assert len(simulator.history) == history_size
 
 
-def test_market_data_simulator_get_historical_prices():
+def test_market_data_simulator_get_historical_prices() -> None:
     """Test get_historical_prices returns the correct list."""
     simulator = MarketDataSimulator(initial_price=100.0)
 
@@ -81,7 +81,7 @@ def test_market_data_simulator_get_historical_prices():
     assert historical_prices == expected_prices
 
 
-def test_market_data_simulator_price_minimum():
+def test_market_data_simulator_price_minimum() -> None:
     """Test that prices don't go below 1.0."""
     # Set up simulator with high volatility and negative trend to try to force low prices
     simulator = MarketDataSimulator(initial_price=1.5, volatility=0.1, trend=-0.05)
@@ -92,7 +92,7 @@ def test_market_data_simulator_price_minimum():
         assert price >= 1.0, f"Price dropped below 1.0: {price}"
 
 
-def test_market_data_simulator_deterministic_behavior(monkeypatch):
+def test_market_data_simulator_deterministic_behavior(monkeypatch) -> None:
     """Test that simulator behaves deterministically with fixed random seed."""
     # Fix the random seed
     monkeypatch.setattr(
@@ -112,7 +112,7 @@ def test_market_data_simulator_deterministic_behavior(monkeypatch):
     assert prices1 == prices2
 
 
-def test_market_data_simulator_edge_cases():
+def test_market_data_simulator_edge_cases() -> None:
     """Test edge cases for MarketDataSimulator."""
     # Test with very small initial price
     simulator = MarketDataSimulator(initial_price=1.0, volatility=0.01, trend=0.0)
@@ -123,7 +123,7 @@ def test_market_data_simulator_edge_cases():
         assert price >= 1.0
 
 
-def test_market_data_simulator_high_volatility():
+def test_market_data_simulator_high_volatility() -> None:
     """Test MarketDataSimulator with high volatility."""
     simulator = MarketDataSimulator(initial_price=100.0, volatility=0.5, trend=0.0)
 
@@ -136,7 +136,7 @@ def test_market_data_simulator_high_volatility():
         assert price >= 1.0
 
 
-def test_market_data_simulator_negative_trend():
+def test_market_data_simulator_negative_trend() -> None:
     """Test MarketDataSimulator with negative trend."""
     simulator = MarketDataSimulator(initial_price=100.0, volatility=0.01, trend=-0.01)
 
@@ -149,7 +149,7 @@ def test_market_data_simulator_negative_trend():
     # but we won't assert this strictly as it could fail due to randomness
 
 
-def test_market_data_simulator_zero_volatility():
+def test_market_data_simulator_zero_volatility() -> None:
     """Test MarketDataSimulator with zero volatility."""
     simulator = MarketDataSimulator(initial_price=100.0, volatility=0.0, trend=0.0005)
 
@@ -164,7 +164,7 @@ def test_market_data_simulator_zero_volatility():
         assert abs(price - expected_price) < 1e-10  # Allow for floating point precision
 
 
-def test_market_data_simulator_large_history():
+def test_market_data_simulator_large_history() -> None:
     """Test MarketDataSimulator with large history size."""
     large_history_size = 10000
     simulator = MarketDataSimulator(
@@ -180,7 +180,7 @@ def test_market_data_simulator_large_history():
     assert len(simulator.history) <= large_history_size
 
 
-def test_market_data_simulator_single_history_size():
+def test_market_data_simulator_single_history_size() -> None:
     """Test MarketDataSimulator with history size of 1."""
     simulator = MarketDataSimulator(initial_price=100.0, history_size=1)
 

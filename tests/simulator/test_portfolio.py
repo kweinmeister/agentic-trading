@@ -3,7 +3,7 @@
 from simulator.portfolio import PortfolioState, TradeAction
 
 
-def test_portfolio_state_initialization():
+def test_portfolio_state_initialization() -> None:
     """Test PortfolioState initialization with default values."""
     portfolio = PortfolioState()
 
@@ -13,7 +13,7 @@ def test_portfolio_state_initialization():
     assert portfolio.total_value == 100000.0
 
 
-def test_portfolio_state_custom_initialization():
+def test_portfolio_state_custom_initialization() -> None:
     """Test PortfolioState initialization with custom values."""
     cash = 50000.0
     shares = 100
@@ -33,7 +33,7 @@ def test_portfolio_state_custom_initialization():
     assert portfolio.total_value == total_value
 
 
-def test_portfolio_update_valuation():
+def test_portfolio_update_valuation() -> None:
     """Test update_valuation method."""
     portfolio = PortfolioState(cash=10000.0, shares=100)
     current_price = 50.0
@@ -44,7 +44,7 @@ def test_portfolio_update_valuation():
     assert portfolio.total_value == 15000.0  # $10000 cash + $5000 holdings
 
 
-def test_portfolio_execute_buy_trade_sufficient_funds():
+def test_portfolio_execute_buy_trade_sufficient_funds() -> None:
     """Test executing a BUY trade with sufficient funds."""
     portfolio = PortfolioState(cash=10000.0, shares=0)
     action = TradeAction.BUY
@@ -60,7 +60,7 @@ def test_portfolio_execute_buy_trade_sufficient_funds():
     assert portfolio.total_value == 10000.0
 
 
-def test_portfolio_execute_buy_trade_insufficient_funds():
+def test_portfolio_execute_buy_trade_insufficient_funds() -> None:
     """Test executing a BUY trade with insufficient funds."""
     portfolio = PortfolioState(cash=500.0, shares=0)
     action = TradeAction.BUY
@@ -74,7 +74,7 @@ def test_portfolio_execute_buy_trade_insufficient_funds():
     assert portfolio.shares == 0  # No change
 
 
-def test_portfolio_execute_sell_trade_sufficient_shares():
+def test_portfolio_execute_sell_trade_sufficient_shares() -> None:
     """Test executing a SELL trade with sufficient shares."""
     portfolio = PortfolioState(cash=10000.0, shares=100)
     action = TradeAction.SELL
@@ -88,7 +88,7 @@ def test_portfolio_execute_sell_trade_sufficient_shares():
     assert portfolio.shares == 90  # 100 - 10
 
 
-def test_portfolio_execute_sell_trade_insufficient_shares():
+def test_portfolio_execute_sell_trade_insufficient_shares() -> None:
     """Test executing a SELL trade with insufficient shares."""
     portfolio = PortfolioState(cash=10000.0, shares=5)
     action = TradeAction.SELL
@@ -102,7 +102,7 @@ def test_portfolio_execute_sell_trade_insufficient_shares():
     assert portfolio.shares == 5  # No change
 
 
-def test_portfolio_str_representation():
+def test_portfolio_str_representation() -> None:
     """Test the string representation of PortfolioState."""
     portfolio = PortfolioState(cash=10000.0, shares=50)
     portfolio.update_valuation(100.0)  # Update to set holdings_value and total_value
@@ -116,7 +116,7 @@ def test_portfolio_str_representation():
     assert "Total=" in portfolio_str
 
 
-def test_trade_action_enum():
+def test_trade_action_enum() -> None:
     """Test the TradeAction enum values."""
     assert TradeAction.BUY.name == "BUY"
     assert TradeAction.SELL.name == "SELL"
@@ -130,7 +130,7 @@ def test_trade_action_enum():
     assert "SELL" in TradeAction.__members__
 
 
-def test_portfolio_edge_cases():
+def test_portfolio_edge_cases() -> None:
     """Test edge cases for PortfolioState."""
     # Test with zero cash and zero shares
     portfolio = PortfolioState(cash=0.0, shares=0)
@@ -148,7 +148,7 @@ def test_portfolio_edge_cases():
     assert portfolio.shares == 0
 
 
-def test_portfolio_large_numbers():
+def test_portfolio_large_numbers() -> None:
     """Test PortfolioState with large numbers."""
     large_cash = 1e9  # 1 billion
     large_shares = int(1e6)  # 1 million shares
@@ -161,7 +161,7 @@ def test_portfolio_large_numbers():
     assert portfolio.total_value == 1.1e9  # 1.1 billion
 
 
-def test_portfolio_fractional_shares():
+def test_portfolio_fractional_shares() -> None:
     """Test that PortfolioState correctly handles integer shares."""
     portfolio = PortfolioState(cash=1000.0, shares=10)
 
@@ -177,7 +177,7 @@ def test_portfolio_fractional_shares():
     assert portfolio.shares == 12
 
 
-def test_portfolio_zero_price():
+def test_portfolio_zero_price() -> None:
     """Test PortfolioState with zero price."""
     portfolio = PortfolioState(cash=1000.0, shares=100)
 
@@ -188,7 +188,7 @@ def test_portfolio_zero_price():
     assert portfolio.total_value == 1000.0
 
 
-def test_portfolio_very_high_price():
+def test_portfolio_very_high_price() -> None:
     """Test PortfolioState with very high price."""
     portfolio = PortfolioState(cash=1000.0, shares=100)
 

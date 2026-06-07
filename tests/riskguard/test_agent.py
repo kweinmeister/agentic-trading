@@ -16,7 +16,7 @@ def agent() -> RiskGuardAgent:
     return RiskGuardAgent()
 
 
-def test_riskguard_agent_instantiation(agent: RiskGuardAgent):
+def test_riskguard_agent_instantiation(agent: RiskGuardAgent) -> None:
     """Tests basic instantiation of the RiskGuardAgent."""
     assert agent is not None
     assert agent.name == "RiskGuard"
@@ -30,10 +30,10 @@ async def test_riskguard_run_async_impl_concurrent_requests(
     agent,
     adk_ctx: InvocationContext,
     riskguard_input_data_factory,
-):
+) -> None:
     """Tests _run_async_impl handles multiple concurrent requests."""
 
-    async def run_agent_invocation(check_id):
+    async def run_agent_invocation(check_id: int):
         ctx = adk_ctx
         input_data = riskguard_input_data_factory(
             trade_proposal=TradeProposal(

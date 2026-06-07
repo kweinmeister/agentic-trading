@@ -4,7 +4,7 @@ from common.models import PortfolioState, TradeProposal
 from riskguard.rules import check_trade_risk_logic
 
 
-def test_risk_check_with_very_small_limits(riskguard_input_data_factory):
+def test_risk_check_with_very_small_limits(riskguard_input_data_factory) -> None:
     """Test risk check with very small limit values."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -28,7 +28,7 @@ def test_risk_check_with_very_small_limits(riskguard_input_data_factory):
     assert result.approved is False
 
 
-def test_risk_check_with_very_large_limits(riskguard_input_data_factory):
+def test_risk_check_with_very_large_limits(riskguard_input_data_factory) -> None:
     """Test risk check with very large limit values."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -56,7 +56,7 @@ def test_risk_check_with_very_large_limits(riskguard_input_data_factory):
     assert result.approved is True
 
 
-def test_risk_check_approve_valid_trade(riskguard_input_data_factory):
+def test_risk_check_approve_valid_trade(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic approves a valid trade."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -75,7 +75,9 @@ def test_risk_check_approve_valid_trade(riskguard_input_data_factory):
     assert result.reason == "Trade adheres to risk rules."
 
 
-def test_risk_check_rejects_negative_portfolio_value(riskguard_input_data_factory):
+def test_risk_check_rejects_negative_portfolio_value(
+    riskguard_input_data_factory,
+) -> None:
     """Test that trades resulting in negative portfolio values are rejected.
 
     When a trade would result in a negative post-trade total value,
@@ -119,7 +121,7 @@ def test_risk_check_rejects_negative_portfolio_value(riskguard_input_data_factor
     assert result.approved is False
 
 
-def test_risk_check_reject_pos_size(riskguard_input_data_factory):
+def test_risk_check_reject_pos_size(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic rejects a trade exceeding max position size."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -142,7 +144,7 @@ def test_risk_check_reject_pos_size(riskguard_input_data_factory):
     assert "Exceeds max position size per trade" in result.reason
 
 
-def test_risk_check_reject_insufficient_cash(riskguard_input_data_factory):
+def test_risk_check_reject_insufficient_cash(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic rejects a BUY trade with insufficient cash."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -161,7 +163,7 @@ def test_risk_check_reject_insufficient_cash(riskguard_input_data_factory):
     assert "Insufficient cash" in result.reason
 
 
-def test_risk_check_reject_concentration_limit(riskguard_input_data_factory):
+def test_risk_check_reject_concentration_limit(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic rejects a trade exceeding concentration limit."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -182,7 +184,7 @@ def test_risk_check_reject_concentration_limit(riskguard_input_data_factory):
     assert "Exceeds max asset concentration" in result.reason
 
 
-def test_risk_check_reject_insufficient_shares(riskguard_input_data_factory):
+def test_risk_check_reject_insufficient_shares(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic rejects a SELL trade with insufficient shares."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -201,7 +203,7 @@ def test_risk_check_reject_insufficient_shares(riskguard_input_data_factory):
     assert "Insufficient shares to sell" in result.reason
 
 
-def test_risk_check_reject_unknown_action(riskguard_input_data_factory):
+def test_risk_check_reject_unknown_action(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic rejects a trade with unknown action."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -220,7 +222,7 @@ def test_risk_check_reject_unknown_action(riskguard_input_data_factory):
     assert "Unknown trade action" in result.reason
 
 
-def test_risk_check_invalid_input(riskguard_input_data_factory):
+def test_risk_check_invalid_input(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic handles invalid input data."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -238,7 +240,7 @@ def test_risk_check_invalid_input(riskguard_input_data_factory):
     assert "Trade quantity and price must be positive" in result.reason
 
 
-def test_risk_check_zero_values(riskguard_input_data_factory):
+def test_risk_check_zero_values(riskguard_input_data_factory) -> None:
     """Tests check_trade_risk_logic handles zero values correctly."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -259,7 +261,7 @@ def test_risk_check_zero_values(riskguard_input_data_factory):
     assert "Trade quantity and price must be positive." in result.reason
 
 
-def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
+def test_risk_check_approve_exact_cash(riskguard_input_data_factory) -> None:
     """Tests that a trade using the exact available cash is approved."""
     input_data = riskguard_input_data_factory(
         trade_proposal=TradeProposal(
@@ -280,7 +282,7 @@ def test_risk_check_approve_exact_cash(riskguard_input_data_factory):
     assert result.reason == "Trade adheres to risk rules."
 
 
-def test_risk_check_division_by_zero(riskguard_input_data_factory):
+def test_risk_check_division_by_zero(riskguard_input_data_factory) -> None:
     """Test that `check_trade_risk_logic` handles a zero-value portfolio.
 
     This ensures the function does not raise a `ZeroDivisionError` when

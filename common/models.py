@@ -1,7 +1,7 @@
 """Data models for the agentic trading simulator."""
 
-from enum import Enum
-from typing import List, Literal, Optional
+from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -63,7 +63,7 @@ class AlphaBotTaskPayload(BaseModel):
     This is sent FROM the Simulator TO AlphaBot.
     """
 
-    historical_prices: List[float]
+    historical_prices: list[float]
     current_price: float
     portfolio_state: PortfolioState
     day: int
@@ -79,7 +79,7 @@ class AlphaBotTaskPayload(BaseModel):
     max_concentration: float = Field(default=DEFAULT_RISKGUARD_MAX_CONCENTRATION)
 
 
-class TradeStatus(str, Enum):
+class TradeStatus(StrEnum):
     """Enum for the status of a trade decision from AlphaBot."""
 
     APPROVED = "APPROVED"
@@ -93,4 +93,4 @@ class TradeOutcome(BaseModel):
 
     status: TradeStatus
     reason: str
-    trade_proposal: Optional[TradeProposal] = None
+    trade_proposal: TradeProposal | None = None

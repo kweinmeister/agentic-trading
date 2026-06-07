@@ -24,7 +24,7 @@ def mock_ctx() -> InvocationContext:
     return MagicMock(spec=InvocationContext)
 
 
-def test_parse_and_validate_input_success(mock_ctx):
+def test_parse_and_validate_input_success(mock_ctx) -> None:
     """Tests successful parsing and validation."""
     input_data = {"name": "test", "value": 10}
     mock_ctx.user_content = MagicMock()
@@ -39,7 +39,7 @@ def test_parse_and_validate_input_success(mock_ctx):
     assert result.value == 10
 
 
-def test_parse_and_validate_input_no_content(mock_ctx):
+def test_parse_and_validate_input_no_content(mock_ctx) -> None:
     """Tests handling of missing user content."""
     mock_ctx.user_content = None
     mock_ctx.invocation_id = "test_id"
@@ -49,7 +49,7 @@ def test_parse_and_validate_input_no_content(mock_ctx):
     assert result is None
 
 
-def test_parse_and_validate_input_json_error(mock_ctx):
+def test_parse_and_validate_input_json_error(mock_ctx) -> None:
     """Tests handling of invalid JSON."""
     mock_ctx.user_content = MagicMock()
     mock_ctx.user_content.parts = [MagicMock(text="not a valid json")]
@@ -60,7 +60,7 @@ def test_parse_and_validate_input_json_error(mock_ctx):
     assert result is None
 
 
-def test_parse_and_validate_input_validation_error(mock_ctx):
+def test_parse_and_validate_input_validation_error(mock_ctx) -> None:
     """Tests handling of Pydantic validation errors."""
     input_data = {"name": "test", "value": -5}  # 'value' must be > 0
     mock_ctx.user_content = MagicMock()
@@ -72,7 +72,7 @@ def test_parse_and_validate_input_validation_error(mock_ctx):
     assert result is None
 
 
-def test_get_service_url_prefers_env_var():
+def test_get_service_url_prefers_env_var() -> None:
     """Tests that get_service_url returns the URL from the environment variable when it is set."""
     env_var_name = "MY_TEST_SERVICE_URL"
     public_url = "https://my-test-service.com"
@@ -82,7 +82,7 @@ def test_get_service_url_prefers_env_var():
         assert result_url == public_url
 
 
-def test_get_service_url_falls_back_to_host_port():
+def test_get_service_url_falls_back_to_host_port() -> None:
     """Tests that get_service_url falls back to the host and port when the env var is not set."""
     env_var_name = "MY_NONEXISTENT_SERVICE_URL"
     host = "127.0.0.1"
@@ -94,7 +94,7 @@ def test_get_service_url_falls_back_to_host_port():
         assert result_url == f"http://{host}:{port}"
 
 
-def test_get_service_url_strips_trailing_slash_from_env_var():
+def test_get_service_url_strips_trailing_slash_from_env_var() -> None:
     """Tests that get_service_url correctly strips a trailing slash from the environment variable URL."""
     env_var_name = "MY_SLASH_SERVICE_URL"
     public_url_with_slash = "https://my-service.com/"

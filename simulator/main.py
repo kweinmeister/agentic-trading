@@ -12,7 +12,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any
 
 import httpx
 import pandas as pd
@@ -27,10 +27,12 @@ from a2a.client import (
 )
 from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
-    Role,
+    Message as A2AMessage,
 )
 from a2a.types import (
-    Message as A2AMessage,
+    Role,
+    SendMessageRequest,
+    TaskState,
 )
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
@@ -71,7 +73,7 @@ templates_dir = module_dir / "templates"
 static_dir = module_dir / "static"
 
 
-def format_currency(value: Optional[float]) -> str:
+def format_currency(value: float | None) -> str:
     """Format an optional float value as currency, using locale settings if possible."""
     if value is None:
         return "N/A"
@@ -116,8 +118,8 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 def _create_results_figure(
     results_df: pd.DataFrame,
-    params: Dict[str, Any],
-    trade_markers: Dict[str, List],
+    params: dict[str, Any],
+    trade_markers: dict[str, list],
 ) -> go.Figure:
     """Create the Plotly figure for simulation results."""
     MARKER_SIZE = 10
@@ -139,7 +141,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["Price"],
             name="Price",
-            line=dict(color="skyblue"),
+            line={"color": "skyblue"},
             legendgroup="price",
         ),
         row=1,
@@ -150,7 +152,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["SMA_Short"],
             name=f"SMA({params['alphabot_short_sma']})",
-            line=dict(color="orange", dash="dot"),
+            line={"color": "orange", "dash": "dot"},
             legendgroup="price",
             legendrank=2,
         ),
@@ -162,7 +164,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["SMA_Long"],
             name=f"SMA({params['alphabot_long_sma']})",
-            line=dict(color="lightcoral", dash="dash"),
+            line={"color": "lightcoral", "dash": "dash"},
             legendgroup="price",
             legendrank=3,
         ),
@@ -176,12 +178,12 @@ def _create_results_figure(
                 x=trade_markers["approved_buy_days"],
                 y=trade_markers["approved_buy_prices"],
                 mode="markers",
-                marker=dict(
-                    symbol="triangle-up",
-                    color=APPROVED_COLOR,
-                    size=MARKER_SIZE,
-                    line=dict(color=MARKER_LINE_COLOR, width=MARKER_LINE_WIDTH),
-                ),
+                marker={
+                    "symbol": "triangle-up",
+                    "color": APPROVED_COLOR,
+                    "size": MARKER_SIZE,
+                    "line": {"color": MARKER_LINE_COLOR, "width": MARKER_LINE_WIDTH},
+                },
                 name="Approved Buy",
                 legendgroup="outcome",
                 legendrank=4,
@@ -195,12 +197,12 @@ def _create_results_figure(
                 x=trade_markers["rejected_buy_days"],
                 y=trade_markers["rejected_buy_prices"],
                 mode="markers",
-                marker=dict(
-                    symbol="triangle-up",
-                    color=REJECTED_COLOR,
-                    size=MARKER_SIZE,
-                    line=dict(color=MARKER_LINE_COLOR, width=MARKER_LINE_WIDTH),
-                ),
+                marker={
+                    "symbol": "triangle-up",
+                    "color": REJECTED_COLOR,
+                    "size": MARKER_SIZE,
+                    "line": {"color": MARKER_LINE_COLOR, "width": MARKER_LINE_WIDTH},
+                },
                 name="Rejected Buy",
                 legendgroup="outcome",
                 legendrank=5,
@@ -214,12 +216,12 @@ def _create_results_figure(
                 x=trade_markers["approved_sell_days"],
                 y=trade_markers["approved_sell_prices"],
                 mode="markers",
-                marker=dict(
-                    symbol="triangle-down",
-                    color=APPROVED_COLOR,
-                    size=MARKER_SIZE,
-                    line=dict(color=MARKER_LINE_COLOR, width=MARKER_LINE_WIDTH),
-                ),
+                marker={
+                    "symbol": "triangle-down",
+                    "color": APPROVED_COLOR,
+                    "size": MARKER_SIZE,
+                    "line": {"color": MARKER_LINE_COLOR, "width": MARKER_LINE_WIDTH},
+                },
                 name="Approved Sell",
                 legendgroup="outcome",
                 legendrank=6,
@@ -233,12 +235,12 @@ def _create_results_figure(
                 x=trade_markers["rejected_sell_days"],
                 y=trade_markers["rejected_sell_prices"],
                 mode="markers",
-                marker=dict(
-                    symbol="triangle-down",
-                    color=REJECTED_COLOR,
-                    size=MARKER_SIZE,
-                    line=dict(color=MARKER_LINE_COLOR, width=MARKER_LINE_WIDTH),
-                ),
+                marker={
+                    "symbol": "triangle-down",
+                    "color": REJECTED_COLOR,
+                    "size": MARKER_SIZE,
+                    "line": {"color": MARKER_LINE_COLOR, "width": MARKER_LINE_WIDTH},
+                },
                 name="Rejected Sell",
                 legendgroup="outcome",
                 legendrank=7,
@@ -252,7 +254,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["TotalValue"],
             name="Total Value",
-            line=dict(color="green"),
+            line={"color": "green"},
             legendgroup="portfolio",
             legendrank=8,
         ),
@@ -265,7 +267,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["Cash"],
             name="Cash",
-            line=dict(color="lightgreen", dash="dash"),
+            line={"color": "lightgreen", "dash": "dash"},
             legendgroup="portfolio",
             legendrank=9,
         ),
@@ -278,7 +280,7 @@ def _create_results_figure(
             x=results_df.index,
             y=results_df["Shares"],
             name="Shares Held",
-            line=dict(color="purple", dash="dot"),
+            line={"color": "purple", "dash": "dot"},
             legendgroup="portfolio",
             legendrank=10,
         ),
@@ -288,15 +290,15 @@ def _create_results_figure(
     )
 
     fig.update_layout(
-        margin=dict(l=10, r=10, t=10, b=10),
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.05,
-            xanchor="center",
-            x=0.5,
-            traceorder="grouped+reversed",
-        ),
+        margin={"l": 10, "r": 10, "t": 10, "b": 10},
+        legend={
+            "orientation": "h",
+            "yanchor": "top",
+            "y": -0.05,
+            "xanchor": "center",
+            "x": 0.5,
+            "traceorder": "grouped+reversed",
+        },
         autosize=True,
     )
     fig.update_yaxes(title_text="Price ($)", row=1, col=1, secondary_y=False)
@@ -315,12 +317,12 @@ def _create_results_figure(
 class UILogHandler(logging.Handler):
     """Custom log handler to capture logs into a provided list for UI display."""
 
-    def __init__(self, log_list: List[str]):
+    def __init__(self, log_list: list[str]) -> None:
         """Initialize the UILogHandler."""
         super().__init__()
         self._log_list = log_list
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         """Format the record and append it to the log list."""
         log_entry = self.format(record)
         self._log_list.append(log_entry)
@@ -328,19 +330,22 @@ class UILogHandler(logging.Handler):
 
 async def _call_alphabot_a2a(
     client_factory: ClientFactory,
+    httpx_client: httpx.AsyncClient,
     alphabot_url: str,
     session_id: str,
     day: int,
     current_price: float,
-    historical_prices: List[float],
+    historical_prices: list[float],
     portfolio: PortfolioState,
-    params: Dict[str, Any],
+    params: dict[str, Any],
     sim_logger: logging.Logger,
-) -> Dict[str, Any]:
+    cache: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Prepare and send a message to the AlphaBot A2A server for a given simulation day.
 
     Args:
         client_factory: The A2A ClientFactory instance.
+        httpx_client: The HTTPX AsyncClient to use for resolving the agent card.
         alphabot_url: The base URL for the AlphaBot service.
         session_id: The simulation session ID (used as contextId).
         day: The current simulation day.
@@ -376,24 +381,23 @@ async def _call_alphabot_a2a(
     # This is now handled by the A2A SDK client
 
     sim_logger.info(f"--- Calling AlphaBot A2A Server (Session ID: {session_id}) ---")
-    outcome: Dict[str, Any] = {
+    outcome: dict[str, Any] = {
         "approved_trade": None,
         "rejected_trade": None,
         "reason": None,
         "error": None,
     }
-
-    # Access the httpx_client from the factory's config to create the A2ACardResolver.
-    # The ClientFactory doesn't provide a public method to access the httpx_client directly.
-    httpx_client = client_factory._config.httpx_client
-    if not httpx_client:
-        raise ConnectionError("HTTPX client not configured in ClientFactory.")
-
-    card_resolver = A2ACardResolver(httpx_client=httpx_client, base_url=alphabot_url)
-
     try:
-        agent_card = await card_resolver.get_agent_card()
-        a2a_sdk_client = client_factory.create(agent_card)
+        a2a_sdk_client = cache.get("a2a_client") if cache is not None else None
+        if not a2a_sdk_client:
+            card_resolver = A2ACardResolver(
+                httpx_client=httpx_client,
+                base_url=alphabot_url,
+            )
+            agent_card = await card_resolver.get_agent_card()
+            a2a_sdk_client = client_factory.create(agent_card)
+            if cache is not None:
+                cache["a2a_client"] = a2a_sdk_client
 
         # The new client returns a stream. We iterate and process the events.
         message_to_send = A2AMessage(
@@ -402,53 +406,105 @@ async def _call_alphabot_a2a(
             parts=[
                 new_data_part(payload.model_dump(mode="json")),
             ],
+            context_id=session_id,
         )
-        async for event in a2a_sdk_client.send_message(message_to_send):
-            if isinstance(event, A2AMessage):
-                # This is the final response message
-                data_parts = get_data_parts(event.parts)
-                if data_parts:
-                    part_data = data_parts[0]
-                    outcome_model = TradeOutcome.model_validate(part_data)
+        request = SendMessageRequest(message=message_to_send)
+        stream = a2a_sdk_client.send_message(request)
 
-                    if outcome_model.status == TradeStatus.APPROVED:
-                        if outcome_model.trade_proposal:
-                            outcome["approved_trade"] = (
-                                outcome_model.trade_proposal.model_dump()
-                            )
-                        sim_logger.info(
-                            f"    >>> Approved Trade: {outcome.get('approved_trade')} (Reason: {outcome_model.reason})",
-                        )
-                    elif outcome_model.status == TradeStatus.REJECTED:
-                        if outcome_model.trade_proposal:
-                            outcome["rejected_trade"] = (
-                                outcome_model.trade_proposal.model_dump()
-                            )
-                        sim_logger.info(
-                            f"    >>> Rejected Trade: {outcome.get('rejected_trade')} (Reason: {outcome_model.reason})",
-                        )
-                    elif outcome_model.status == TradeStatus.NO_ACTION:
-                        sim_logger.info(
-                            f"  >> Received info message from AlphaBot: {outcome_model.reason}",
-                        )
-                    outcome["reason"] = outcome_model.reason
+        def process_part_data(part_data: Any) -> None:
+            outcome_model = TradeOutcome.model_validate(part_data)
+
+            if outcome_model.status == TradeStatus.APPROVED:
+                if outcome_model.trade_proposal:
+                    outcome["approved_trade"] = (
+                        outcome_model.trade_proposal.model_dump()
+                    )
+                sim_logger.info(
+                    f"    >>> Approved Trade: {outcome.get('approved_trade')} (Reason: {outcome_model.reason})",
+                )
+            elif outcome_model.status == TradeStatus.REJECTED:
+                if outcome_model.trade_proposal:
+                    outcome["rejected_trade"] = (
+                        outcome_model.trade_proposal.model_dump()
+                    )
+                sim_logger.info(
+                    f"    >>> Rejected Trade: {outcome.get('rejected_trade')} (Reason: {outcome_model.reason})",
+                )
+            elif outcome_model.status == TradeStatus.NO_ACTION:
+                sim_logger.info(
+                    f"  >> Received info message from AlphaBot: {outcome_model.reason}",
+                )
+            outcome["reason"] = outcome_model.reason
+
+        async for event in stream:
+            if event.HasField("message"):
+                # This is the final response message
+                data_parts = get_data_parts(event.message.parts)
+                if data_parts:
+                    process_part_data(data_parts[0])
                 else:
                     sim_logger.warning(
                         "AlphaBot response lacked expected DataPart with TradeOutcome.",
                     )
                     outcome["error"] = "AlphaBot Response Format Issue or No Decision"
                 break  # We have the final message, so we can exit the loop.
-            if isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
-                task, _ = event
+            if event.HasField("artifact_update"):
+                if event.artifact_update.artifact.name == "response":
+                    data_parts = get_data_parts(event.artifact_update.artifact.parts)
+                    if data_parts:
+                        process_part_data(data_parts[0])
+                    else:
+                        sim_logger.warning(
+                            "AlphaBot response lacked expected DataPart in artifact 'response'.",
+                        )
+                        outcome["error"] = (
+                            "AlphaBot Response Format Issue or No Decision"
+                        )
+                    break
                 sim_logger.debug(
-                    f"Received task update for {task.id}: {task.status.state}",
+                    f"Received unexpected artifact update '{event.artifact_update.artifact.name}' from AlphaBot, ignoring.",
                 )
+            elif event.HasField("status_update"):
+                state = event.status_update.status.state
+                if state == TaskState.TASK_STATE_FAILED:
+                    outcome["error"] = "AlphaBot task execution failed."
+                    break
+            elif event.HasField("task"):
+                sim_logger.debug(
+                    f"Received task update for {event.task.id}: {event.task.status.state}",
+                )
+                response_artifact = next(
+                    (art for art in event.task.artifacts if art.name == "response"),
+                    None,
+                )
+                if response_artifact:
+                    data_parts = get_data_parts(response_artifact.parts)
+                    if data_parts:
+                        process_part_data(data_parts[0])
+                    else:
+                        sim_logger.warning(
+                            "AlphaBot response lacked expected DataPart in task artifact 'response'.",
+                        )
+                        outcome["error"] = (
+                            "AlphaBot Response Format Issue or No Decision"
+                        )
+                    break
+                if event.task.status.state == TaskState.TASK_STATE_FAILED:
+                    error_msg = (
+                        event.task.status.message.parts[0].text
+                        if event.task.status.message
+                        and len(event.task.status.message.parts) > 0
+                        else "AlphaBot task execution failed."
+                    )
+                    outcome["error"] = f"AlphaBot task execution failed: {error_msg}"
+                    break
 
     except A2AClientError as e:
         sim_logger.error(f"A2A Client Error: {e}", exc_info=True)
         outcome["error"] = f"A2A Client Error: {e}"
+        msg = f"AlphaBot A2A Client Error: {e}"
         raise ConnectionError(
-            f"AlphaBot A2A Client Error: {e}",
+            msg,
         ) from e
     except Exception as e:
         sim_logger.error(f"General A2A Client/Processing Error: {e}", exc_info=True)
@@ -456,10 +512,10 @@ async def _call_alphabot_a2a(
     return outcome
 
 
-async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
+async def run_simulation_async(params: dict[str, Any]) -> dict[str, Any]:
     """Run the trading simulation and collects results. Returns dict with results or error."""
     logger.info(f"--- Starting Simulation with params: {params} ---")
-    sim_log_list: List[str] = []
+    sim_log_list: list[str] = []
     ui_log_handler = UILogHandler(sim_log_list)
     formatter = logging.Formatter("%(levelname)s:%(name)s: %(message)s")
     ui_log_handler.setFormatter(formatter)
@@ -501,6 +557,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
             )
 
             a2a_session_id = f"sim-session-{uuid.uuid4().hex[:8]}"
+            a2a_client_cache: dict[str, Any] = {}
             sim_logger.info(f"Using A2A Session ID (contextId): {a2a_session_id}")
 
             initial_portfolio_str = f"Initial Portfolio: {portfolio}"
@@ -542,6 +599,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
 
                 a2a_outcome = await _call_alphabot_a2a(
                     client_factory=client_factory,
+                    httpx_client=http_client,
                     alphabot_url=alphabot_url,
                     session_id=a2a_session_id,
                     day=day,
@@ -550,6 +608,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                     portfolio=portfolio,
                     params=params,
                     sim_logger=sim_logger,
+                    cache=a2a_client_cache,
                 )
 
                 approved_trade = a2a_outcome["approved_trade"]
@@ -561,7 +620,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                 is_approved = approved_trade is not None
                 action = trade_details.get("action") if trade_details else None
 
-                signal_log_entry = {
+                signal_log_entry: dict[str, Any] = {
                     "day": day,
                     "log": f"Price={format_currency(current_price)}",
                 }
@@ -609,7 +668,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                             and exec_qty is not None
                             and exec_price is not None
                         ):
-                            trade_action_enum: Optional[TradeAction] = None
+                            trade_action_enum: TradeAction | None = None
                             if exec_action.upper() == "BUY":
                                 trade_action_enum = TradeAction.BUY
                             elif exec_action.upper() == "SELL":
@@ -685,7 +744,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
                 ],
             ).set_index("Day")
         )
-        trade_markers = {
+        trade_markers: dict[str, list[Any]] = {
             "approved_buy_days": approved_buy_days,
             "approved_buy_prices": approved_buy_prices,
             "rejected_buy_days": rejected_buy_days,
@@ -710,8 +769,8 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
 
     except (ConnectionError, httpx.ConnectError) as ce:
         error_msg = f"Connection Error: {ce}. Ensure AlphaBot A2A server is running and accessible."
-        logger.error(error_msg)
-        sim_logger.error(error_msg)
+        logger.exception(error_msg)
+        sim_logger.exception(error_msg)
         return {
             "success": False,
             "error": error_msg,
@@ -841,7 +900,7 @@ class SimulationRunParams(BaseModel):
         description="URL for AlphaBot service.",
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Return a dictionary representation of the model."""
         # Convert concentration back to float 0.0-1.0 for internal use if needed,
         # but the agent/tool might expect it directly as passed by metadata.
@@ -852,7 +911,7 @@ class SimulationRunParams(BaseModel):
 def _render_error_page(
     request: Request,
     error_message: str,
-    form_values: Dict[str, Any],
+    form_values: dict[str, Any],
 ) -> HTMLResponse:
     """Render the main page with an error message."""
     template_context = {
@@ -891,23 +950,28 @@ def _render_error_page(
 @app.post("/run_simulation", response_class=HTMLResponse)
 async def handle_run_simulation(
     request: Request,
-    alphabot_short_sma: int = Form(...),
-    alphabot_long_sma: int = Form(defaults.DEFAULT_ALPHABOT_LONG_SMA),
-    alphabot_trade_qty: int = Form(defaults.DEFAULT_ALPHABOT_TRADE_QTY),
-    sim_days: int = Form(defaults.DEFAULT_SIM_DAYS),
-    sim_initial_cash: float = Form(defaults.DEFAULT_SIM_INITIAL_CASH),
-    sim_initial_price: float = Form(defaults.DEFAULT_SIM_INITIAL_PRICE),
-    sim_volatility: float = Form(defaults.DEFAULT_SIM_VOLATILITY),
-    sim_trend: float = Form(defaults.DEFAULT_SIM_TREND),
-    riskguard_url: str = Form(
-        os.environ.get("RISKGUARD_SERVICE_URL", defaults.DEFAULT_RISKGUARD_URL),
+    alphabot_short_sma: Annotated[int, Form()],
+    alphabot_long_sma: Annotated[int, Form()] = defaults.DEFAULT_ALPHABOT_LONG_SMA,
+    alphabot_trade_qty: Annotated[int, Form()] = defaults.DEFAULT_ALPHABOT_TRADE_QTY,
+    sim_days: Annotated[int, Form()] = defaults.DEFAULT_SIM_DAYS,
+    sim_initial_cash: Annotated[float, Form()] = defaults.DEFAULT_SIM_INITIAL_CASH,
+    sim_initial_price: Annotated[float, Form()] = defaults.DEFAULT_SIM_INITIAL_PRICE,
+    sim_volatility: Annotated[float, Form()] = defaults.DEFAULT_SIM_VOLATILITY,
+    sim_trend: Annotated[float, Form()] = defaults.DEFAULT_SIM_TREND,
+    riskguard_url: Annotated[str, Form()] = os.environ.get(
+        "RISKGUARD_SERVICE_URL",
+        defaults.DEFAULT_RISKGUARD_URL,
     ),  # Get from env or default
-    riskguard_max_pos_size: float = Form(defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE),
-    riskguard_max_concentration: int = Form(  # Input as int
-        int(defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION * 100),
+    riskguard_max_pos_size: Annotated[
+        float,
+        Form(),
+    ] = defaults.DEFAULT_RISKGUARD_MAX_POS_SIZE,
+    riskguard_max_concentration: Annotated[int, Form()] = int(
+        defaults.DEFAULT_RISKGUARD_MAX_CONCENTRATION * 100,
     ),
-    alphabot_url: str = Form(
-        os.environ.get("ALPHABOT_SERVICE_URL", defaults.DEFAULT_ALPHABOT_URL),
+    alphabot_url: Annotated[str, Form()] = os.environ.get(
+        "ALPHABOT_SERVICE_URL",
+        defaults.DEFAULT_ALPHABOT_URL,
     ),  # Get from env or default
 ):
     """Handle the simulation run request, validating parameters via Pydantic."""
@@ -947,7 +1011,7 @@ async def handle_run_simulation(
         )
         params_dict = sim_params.to_dict()
     except ValidationError as e:
-        logger.error(f"Simulation parameter validation failed: {e}")
+        logger.exception(f"Simulation parameter validation failed: {e}")
         return _render_error_page(
             request,
             f"Invalid simulation parameters: {e}",

@@ -38,7 +38,7 @@ class PortfolioState:
             )
             return f"${value:,.2f}"  # Basic fallback format
 
-    def update_valuation(self, current_price: float):
+    def update_valuation(self, current_price: float) -> None:
         """Update holding and total values based on the current price."""
         self.holdings_value = self.shares * current_price
         self.total_value = self.cash + self.holdings_value
@@ -76,7 +76,7 @@ class PortfolioState:
         # If an invalid value somehow gets passed, it would raise an error earlier.
         return False  # Should not be reached if using the enum correctly
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a locale-formatted string representation of the portfolio."""
         cash_f = self._format_currency(self.cash)
         holdings_f = self._format_currency(self.holdings_value)
