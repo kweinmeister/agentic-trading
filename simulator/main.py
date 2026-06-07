@@ -21,15 +21,12 @@ import plotly.graph_objects as go
 # A2A SDK Imports
 from a2a.client import (
     A2ACardResolver,
-    A2AClientHTTPError,
-    A2AClientJSONError,
+    A2AClientError,
     ClientConfig,
     ClientFactory,
 )
-from a2a.client.errors import A2AClientInvalidStateError
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
-    DataPart,
-    Part,
     Role,
 )
 from a2a.types import (
@@ -401,16 +398,17 @@ async def _call_alphabot_a2a(
         # The new client returns a stream. We iterate and process the events.
         message_to_send = A2AMessage(
             message_id=f"msg-{uuid.uuid4().hex[:8]}",
-            role=Role.user,
+            role=Role.ROLE_USER,
             parts=[
-                Part(root=DataPart(data=payload.model_dump(mode="json"))),
+                new_data_part(payload.model_dump(mode="json")),
             ],
         )
         async for event in a2a_sdk_client.send_message(message_to_send):
             if isinstance(event, A2AMessage):
                 # This is the final response message
-                if event.parts and isinstance(event.parts[0].root, DataPart):
-                    part_data = event.parts[0].root.data
+                data_parts = get_data_parts(event.parts)
+                if data_parts:
+                    part_data = data_parts[0]
                     outcome_model = TradeOutcome.model_validate(part_data)
 
                     if outcome_model.status == TradeStatus.APPROVED:
@@ -446,22 +444,12 @@ async def _call_alphabot_a2a(
                     f"Received task update for {task.id}: {task.status.state}",
                 )
 
-    except A2AClientInvalidStateError as e:
-        sim_logger.error(f"A2A SDK Invalid State Error: {e}", exc_info=True)
-        outcome["error"] = f"A2A SDK Error: {e}"
-    except A2AClientHTTPError as http_err:
-        sim_logger.error(
-            f"A2A HTTP Error to AlphaBot: {http_err.status_code} - {http_err.message}",
-        )
-        outcome["error"] = (
-            f"AlphaBot Connection/HTTP Error: {http_err.status_code} - {http_err.message}"
-        )
+    except A2AClientError as e:
+        sim_logger.error(f"A2A Client Error: {e}", exc_info=True)
+        outcome["error"] = f"A2A Client Error: {e}"
         raise ConnectionError(
-            f"AlphaBot A2A HTTP Error: {http_err.message}",
-        ) from http_err
-    except A2AClientJSONError as json_err:
-        sim_logger.error(f"A2A JSON Error from AlphaBot: {json_err.message}")
-        outcome["error"] = f"AlphaBot JSON Response Error: {json_err.message}"
+            f"AlphaBot A2A Client Error: {e}",
+        ) from e
     except Exception as e:
         sim_logger.error(f"General A2A Client/Processing Error: {e}", exc_info=True)
         outcome["error"] = f"A2A Processing Error: {e}"
@@ -729,7 +717,7 @@ async def run_simulation_async(params: Dict[str, Any]) -> Dict[str, Any]:
             "error": error_msg,
             "detailed_log": "\n".join(sim_log_list),
         }
-    except (A2AClientHTTPError, A2AClientJSONError) as a2a_err:
+    except A2AClientError as a2a_err:
         error_msg = f"A2A Client Error: {a2a_err}. Check the AlphaBot server logs for more details."
         logger.error(error_msg, exc_info=True)
         sim_logger.error(error_msg, exc_info=True)

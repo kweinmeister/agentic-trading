@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from a2a.types import DataPart, Message, Part, Role
+from a2a.helpers import new_data_part
+from a2a.types import Message, Role
 
 from alphabot.a2a_risk_tool import A2ARiskCheckTool
 from alphabot.agent import AlphaBotAgent
@@ -148,9 +149,9 @@ def alphabot_message_factory(alphabot_input_data_factory):
         # This ensures the test uses the same logic as the application
         a2a_message = Message(
             message_id=f"msg-{uuid.uuid4().hex[:8]}",
-            role=Role.user,
+            role=Role.ROLE_USER,
             parts=[
-                Part(root=DataPart(data=input_data)),
+                new_data_part(input_data),
             ],
         )
 

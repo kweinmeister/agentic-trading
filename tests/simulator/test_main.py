@@ -4,10 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from a2a.client import ClientFactory
+from a2a.helpers import new_data_part
 from a2a.types import (
-    DataPart,
     Message,
-    Part,
     Role,
 )
 from fastapi.testclient import TestClient
@@ -82,8 +81,8 @@ async def test_call_alphabot_a2a_with_factory(
     )
     mock_message = Message(
         message_id="mock_msg_id",
-        role=Role.agent,
-        parts=[Part(root=DataPart(data=trade_outcome.model_dump(mode="json")))],
+        role=Role.ROLE_AGENT,
+        parts=[new_data_part(trade_outcome.model_dump(mode="json"))],
     )
 
     # Configure the mock client's send_message to be an async generator function.
@@ -130,18 +129,16 @@ async def test_call_alphabot_a2a_factory_raises_transport_error():
     mock_factory._config = MagicMock()
     mock_factory._config.httpx_client = AsyncMock()
 
-    from a2a.client.errors import A2AClientHTTPError
+    from a2a.client.errors import A2AClientError
 
     # Configure the factory mock to raise an error on card resolution
-    mock_factory.create.side_effect = A2AClientHTTPError(
-        message="Resolution failed",
-        status_code=404,
+    mock_factory.create.side_effect = A2AClientError(
+        "Resolution failed",
     )
 
     with patch("simulator.main.A2ACardResolver") as mock_resolver:
-        mock_resolver.return_value.get_agent_card.side_effect = A2AClientHTTPError(
-            message="Resolution failed",
-            status_code=404,
+        mock_resolver.return_value.get_agent_card.side_effect = A2AClientError(
+            "Resolution failed",
         )
 
         with pytest.raises(ConnectionError):
