@@ -199,7 +199,7 @@ def test_check_trade_risk_logic_scenarios(
         price=price,
     )
     if action == "HOLD":
-        trade_proposal.action = "HOLD"
+        setattr(trade_proposal, "action", "HOLD")
 
     portfolio_state = PortfolioState(cash=cash, shares=shares, total_value=total_value)
 
