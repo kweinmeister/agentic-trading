@@ -5,7 +5,9 @@ from typing import Callable
 
 import pytest
 from a2a.server.agent_execution import RequestContext
-from a2a.types import DataPart, Message, MessageSendParams, Part, Role
+from a2a.server.context import ServerCallContext
+from a2a.helpers import get_data_parts, new_data_part
+from a2a.types import Message, SendMessageRequest as MessageSendParams, Part, Role
 
 from riskguard.agent_executor import RiskGuardAgentExecutor
 
@@ -20,8 +22,8 @@ def riskguard_message_factory(
         input_data = riskguard_input_data_factory(**kwargs)
         return Message(
             message_id="test_message_id",
-            role=Role.user,
-            parts=[Part(root=DataPart(data=input_data.model_dump()))],
+            role=Role.ROLE_USER,
+            parts=[new_data_part(input_data.model_dump())],
         )
 
     return _create_message
@@ -53,6 +55,7 @@ async def test_execute_success_approved(
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -72,11 +75,10 @@ async def test_execute_success_approved(
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    assert len(enqueued_message.parts) == 1
-    assert isinstance(enqueued_message.parts[0].root, DataPart)
-
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
     expected_data = {"approved": True, "reason": "Within risk parameters."}
-    assert enqueued_message.parts[0].root.data == expected_data
+    assert data_parts[0] == expected_data
 
 
 @pytest.mark.asyncio
@@ -91,19 +93,15 @@ async def test_execute_missing_trade_proposal(
     # Arrange
     request_message = Message(
         message_id="test_message_id",
-        role=Role.user,
+        role=Role.ROLE_USER,
         parts=[
-            Part(
-                root=DataPart(
-                    data={
-                        "portfolio_state": {
-                            "cash": 10000.0,
-                            "shares": 100,
-                            "total_value": 20000.0,
-                        },
-                    },
-                ),
-            ),
+            new_data_part({
+                "portfolio_state": {
+                    "cash": 10000.0,
+                    "shares": 100,
+                    "total_value": 20000.0,
+                },
+            }),
         ],
     )
 
@@ -113,6 +111,7 @@ async def test_execute_missing_trade_proposal(
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -131,11 +130,11 @@ async def test_execute_missing_trade_proposal(
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    assert len(enqueued_message.parts) == 1
-    assert isinstance(enqueued_message.parts[0].root, DataPart)
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
     assert (
         "An internal error occurred: Missing 'trade_proposal' or 'portfolio_state' in data payload"
-        in enqueued_message.parts[0].root.data["reason"]
+        in data_parts[0]["reason"]
     )
     mock_runner_instance.run_async.assert_not_called()
 
@@ -160,6 +159,7 @@ async def test_execute_adk_runner_exception(
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -178,11 +178,11 @@ async def test_execute_adk_runner_exception(
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    assert len(enqueued_message.parts) == 1
-    assert isinstance(enqueued_message.parts[0].root, DataPart)
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
     assert (
         "An internal error occurred: ADK Borked"
-        in enqueued_message.parts[0].root.data["reason"]
+        in data_parts[0]["reason"]
     )
 
 
@@ -204,6 +204,7 @@ async def test_execute_handles_adk_runner_exception(
 
     request_message = riskguard_message_factory()
     context = RequestContext(
+        ServerCallContext(),
         request=MessageSendParams(message=request_message),
         context_id="test-context-456",
         task_id="test-task-123",
@@ -227,7 +228,7 @@ async def test_execute_handles_adk_runner_exception(
     assert isinstance(enqueued_message, Message)
 
     # 3. The message part contains the error
-    error_part = enqueued_message.parts[0].root
-    assert isinstance(error_part, DataPart)
-    assert error_part.data["approved"] is False
-    assert "An internal error occurred: ADK agent failed!" in error_part.data["reason"]
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
+    assert data_parts[0]["approved"] is False
+    assert "An internal error occurred: ADK agent failed!" in data_parts[0]["reason"]

@@ -6,10 +6,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from a2a.server.agent_execution import RequestContext
+from a2a.server.context import ServerCallContext
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
-    DataPart,
     Message,
-    MessageSendParams,
+    SendMessageRequest as MessageSendParams,
     Part,
     Role,
 )
@@ -29,9 +30,8 @@ def alphabot_message_factory(
         input_data = alphabot_input_data_factory(**kwargs)
         return Message(
             message_id="test_message_id",
-            role=Role.user,
-            parts=[Part(root=DataPart(data=input_data.model_dump()))],
-            kind="message",
+            role=Role.ROLE_USER,
+            parts=[new_data_part(input_data.model_dump())],
         )
 
     return _create_message
@@ -61,6 +61,7 @@ async def test_execute_success_buy_decision(
         portfolio_state={"cash": 50000, "shares": 0, "total_value": 50000},
     )
     context = RequestContext(
+        ServerCallContext(),
         request=MessageSendParams(message=request_message),
         context_id="test-context-456",
         task_id="test-task-123",
@@ -123,9 +124,8 @@ async def test_execute_success_buy_decision(
 
     # Verify the message content
     assert enqueued_message.parts is not None
-    assert len(enqueued_message.parts) == 1
-    data_part = enqueued_message.parts[0].root
-    assert isinstance(data_part, DataPart)
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
 
     expected_data = {
         "status": "APPROVED",
@@ -137,7 +137,7 @@ async def test_execute_success_buy_decision(
             "price": 110.0,
         },
     }
-    assert data_part.data == expected_data
+    assert data_parts[0] == expected_data
 
 
 @pytest.mark.asyncio
@@ -148,9 +148,8 @@ async def test_execute_missing_market_data(mock_runner_factory, event_queue) -> 
     # Arrange
     request_message = Message(
         message_id="test_message_id",
-        role=Role.user,
-        parts=[Part(root=DataPart(data={"cash": 10000.0, "shares": 100}))],
-        kind="message",
+        role=Role.ROLE_USER,
+        parts=[new_data_part({"cash": 10000.0, "shares": 100})],
     )
 
     # Act
@@ -159,6 +158,7 @@ async def test_execute_missing_market_data(mock_runner_factory, event_queue) -> 
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -177,9 +177,9 @@ async def test_execute_missing_market_data(mock_runner_factory, event_queue) -> 
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    assert len(enqueued_message.parts) == 1
-    assert isinstance(enqueued_message.parts[0].root, DataPart)
-    assert "validation error" in enqueued_message.parts[0].root.data["reason"]
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
+    assert "validation error" in data_parts[0]["reason"]
 
 
 @pytest.mark.asyncio
@@ -205,6 +205,7 @@ async def test_execute_adk_runner_exception(
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -223,11 +224,11 @@ async def test_execute_adk_runner_exception(
     assert isinstance(enqueued_message, Message)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    assert len(enqueued_message.parts) == 1
-    assert isinstance(enqueued_message.parts[0].root, DataPart)
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
     assert (
         "An unexpected server error occurred."
-        in enqueued_message.parts[0].root.data["reason"]
+        in data_parts[0]["reason"]
     )
 
 
@@ -247,7 +248,7 @@ async def test_execute_handles_adk_runner_exception(
     mock_runner.run_async.side_effect = Exception("ADK agent failed!")
 
     request_message = alphabot_message_factory()
-    context = RequestContext(request=MessageSendParams(message=request_message))
+    context = RequestContext(ServerCallContext(), request=MessageSendParams(message=request_message))
 
     # Act
     executor = AlphaBotAgentExecutor()
@@ -267,10 +268,10 @@ async def test_execute_handles_adk_runner_exception(
     assert isinstance(enqueued_message, Message)
 
     # 3. The message part contains the error
-    error_part = enqueued_message.parts[0].root
-    assert isinstance(error_part, DataPart)
-    assert error_part.data["status"] == "ERROR"
-    assert "An unexpected server error occurred." in error_part.data["reason"]
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
+    assert data_parts[0]["status"] == "ERROR"
+    assert "An unexpected server error occurred." in data_parts[0]["reason"]
 
 
 @pytest.mark.asyncio
@@ -304,6 +305,7 @@ async def test_execute_returns_dict_not_string(
     execution_task = asyncio.create_task(
         executor.execute(
             context=RequestContext(
+                ServerCallContext(),
                 request=MessageSendParams(message=request_message),
                 context_id="test-context-456",
                 task_id="test-task-123",
@@ -319,5 +321,6 @@ async def test_execute_returns_dict_not_string(
     await execution_task
     assert event_queue.is_closed()
 
-    data_part = enqueued_message.parts[0].root
-    assert isinstance(data_part.data, dict)
+    data_parts = get_data_parts(enqueued_message.parts)
+    assert len(data_parts) == 1
+    assert isinstance(data_parts[0], dict)

@@ -6,8 +6,8 @@ from typing import Any
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.types import DataPart, Part
-from a2a.utils.message import new_agent_parts_message
+from a2a.helpers import get_data_parts, new_data_part, new_message as new_agent_parts_message
+from a2a.types import Part
 from google.adk import Runner
 from google.adk.sessions import InMemorySessionService, Session
 from google.genai import types as genai_types
@@ -42,9 +42,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
 
             agent_input_data = None
             if context.message and context.message.parts:
-                part = context.message.parts[0].root
-                if isinstance(part, DataPart):
-                    agent_input_data = part.data
+                data_parts = get_data_parts(context.message.parts)
+                if data_parts:
+                    agent_input_data = data_parts[0]
 
             if (
                 not agent_input_data
@@ -144,7 +144,7 @@ class RiskGuardAgentExecutor(AgentExecutor):
 
             # Instead of using TaskUpdater, create and enqueue a single message
             final_message = new_agent_parts_message(
-                parts=[Part(root=DataPart(data=risk_result_dict))],
+                parts=[new_data_part(risk_result_dict)],
                 context_id=context.context_id,
                 task_id=context.task_id,  # Keep task_id for correlation
             )
@@ -155,14 +155,10 @@ class RiskGuardAgentExecutor(AgentExecutor):
             # Create an error message to send back
             error_message = new_agent_parts_message(
                 parts=[
-                    Part(
-                        root=DataPart(
-                            data={
-                                "approved": False,
-                                "reason": f"An internal error occurred: {e}",
-                            },
-                        ),
-                    ),
+                    new_data_part({
+                        "approved": False,
+                        "reason": f"An internal error occurred: {e}",
+                    }),
                 ],
                 context_id=context.context_id,
                 task_id=context.task_id,

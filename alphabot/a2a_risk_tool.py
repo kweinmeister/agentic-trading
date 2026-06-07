@@ -8,14 +8,14 @@ from typing import Any, Dict
 import httpx
 from a2a.client import (
     A2ACardResolver,
-    A2AClientHTTPError,
-    A2AClientJSONError,
+    A2AClientError,
+    A2AClientTimeoutError,
     ClientConfig,
     ClientFactory,
 )
-from a2a.client.errors import A2AClientInvalidStateError
+
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
-    DataPart,
     Message,
     Part,
     Role,
@@ -242,15 +242,16 @@ class A2ARiskCheckTool(BaseTool):
             # The `send_message` method expects the `Message` object directly.
             message_to_send = Message(
                 message_id=f"msg-{uuid.uuid4().hex[:8]}",
-                role=Role.user,
+                role=Role.ROLE_USER,
                 parts=[
-                    Part(root=DataPart(data=risk_payload.model_dump(mode="json"))),
+                    new_data_part(risk_payload.model_dump(mode="json")),
                 ],
             )
             async for event in a2a_sdk_client.send_message(message_to_send):
                 if isinstance(event, Message):
-                    if event.parts and isinstance(event.parts[0].root, DataPart):
-                        part_data = event.parts[0].root.data
+                    data_parts = get_data_parts(event.parts)
+                    if data_parts:
+                        part_data = data_parts[0]
                         try:
                             risk_result_model = RiskCheckResult.model_validate(
                                 part_data,
@@ -271,25 +272,23 @@ class A2ARiskCheckTool(BaseTool):
                         f"Received task update for {task.id}: {task.status.state}",
                     )
 
-        except A2AClientInvalidStateError as e:
+
+        except A2AClientTimeoutError as e:
             logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK Invalid State Error: {e}",
+                f"[{self.name} Tool ({invocation_id_short})] A2A SDK Timeout error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
                 exc_info=True,
-            )
-            final_result_dict["reason"] = f"A2A SDK Error: {e}"
-        except A2AClientHTTPError as e:
-            logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK HTTP Error connecting to RiskGuard ({risk_guard_target_url}): {e.status_code} - {e.message}",
             )
             final_result_dict["reason"] = (
-                f"A2A Network/HTTP Error: {e.status_code} - {e.message}. Is RiskGuard running?"
+                f"Timeout Error: {e}"
             )
-        except A2AClientJSONError as e:
+        except A2AClientError as e:
             logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK JSON Error from RiskGuard ({risk_guard_target_url}): {e.message}",
+                f"[{self.name} Tool ({invocation_id_short})] A2A SDK error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
                 exc_info=True,
             )
-            final_result_dict["reason"] = f"A2A JSON Error: {e.message}"
+            final_result_dict["reason"] = (
+                f"A2A SDK Error: {e}. Is RiskGuard running?"
+            )
         except ValidationError as e:
             logger.error(
                 f"[{self.name} Tool ({invocation_id_short})] A2A Response Validation Error: {e}",

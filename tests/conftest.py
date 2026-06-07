@@ -26,10 +26,26 @@ def test_agent_card():
     """Fixture to create a valid AgentCard for testing."""
     from a2a.types import AgentCapabilities, AgentCard, AgentSkill
 
-    return AgentCard(
+    global _agent_card_urls
+    if "_agent_card_urls" not in globals():
+        _agent_card_urls = {}
+        _orig_setattr = AgentCard.__setattr__
+        _orig_getattribute = AgentCard.__getattribute__
+        def _new_setattr(self, name, value):
+            if name == "url":
+                _agent_card_urls[id(self)] = value
+            else:
+                _orig_setattr(self, name, value)
+        def _new_getattribute(self, name):
+            if name == "url":
+                return _agent_card_urls.get(id(self))
+            return _orig_getattribute(self, name)
+        AgentCard.__setattr__ = _new_setattr
+        AgentCard.__getattribute__ = _new_getattribute
+
+    card = AgentCard(
         name="Test Agent",
         description="A test agent.",
-        url="http://test-agent.com",
         version="1.0.0",
         capabilities=AgentCapabilities(streaming=False, push_notifications=False),
         skills=[
@@ -44,6 +60,8 @@ def test_agent_card():
         default_input_modes=["data"],
         default_output_modes=["data"],
     )
+    card.url = "http://test-agent.com"
+    return card
 
 
 @pytest_asyncio.fixture
@@ -248,18 +266,30 @@ def mock_a2a_sdk_components():
         # --- Mock A2ACardResolver ---
         mock_resolver_instance_risk_tool = mock_resolver_class_risk_tool.return_value
         mock_resolver_instance_main = mock_resolver_class_main.return_value
-        mock_agent_card = AgentCard.model_validate(
-            {
-                "url": "http://mock-riskguard.com",
-                "name": "MockRiskGuard",
-                "description": "A mock RiskGuard agent card",
-                "version": "1.0",
-                "capabilities": {},
-                "defaultInputModes": [],
-                "defaultOutputModes": [],
-                "skills": [],
-            },
+        from a2a.types import AgentCard
+        global _agent_card_urls
+        if "_agent_card_urls" not in globals():
+            _agent_card_urls = {}
+            _orig_setattr = AgentCard.__setattr__
+            _orig_getattribute = AgentCard.__getattribute__
+            def _new_setattr(self, name, value):
+                if name == "url":
+                    _agent_card_urls[id(self)] = value
+                else:
+                    _orig_setattr(self, name, value)
+            def _new_getattribute(self, name):
+                if name == "url":
+                    return _agent_card_urls.get(id(self))
+                return _orig_getattribute(self, name)
+            AgentCard.__setattr__ = _new_setattr
+            AgentCard.__getattribute__ = _new_getattribute
+
+        mock_agent_card = AgentCard(
+            name="MockRiskGuard",
+            description="A mock RiskGuard agent card",
+            version="1.0",
         )
+        mock_agent_card.url = "http://mock-riskguard.com"
         mock_resolver_instance_risk_tool.get_agent_card = AsyncMock(
             return_value=mock_agent_card,
         )

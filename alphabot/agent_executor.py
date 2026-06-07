@@ -4,8 +4,8 @@ import logging
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.types import DataPart, Part
-from a2a.utils.message import new_agent_parts_message
+from a2a.helpers import get_data_parts, new_data_part, new_message as new_agent_parts_message
+from a2a.types import Part
 from google.adk import Runner
 from google.adk.memory import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService, Session
@@ -49,11 +49,11 @@ class AlphaBotAgentExecutor(AgentExecutor):
             if not context.message or not context.message.parts:
                 raise ValueError("Received an empty or invalid message.")
 
-            part = context.message.parts[0].root
-            if not isinstance(part, DataPart):
+            data_parts = get_data_parts(context.message.parts)
+            if not data_parts:
                 raise ValueError("Expected a DataPart with AlphaBotTaskPayload")
 
-            validated_payload = AlphaBotTaskPayload.model_validate(part.data)
+            validated_payload = AlphaBotTaskPayload.model_validate(data_parts[0])
             agent_input_json = validated_payload.model_dump_json()
             adk_content = genai_types.Content(
                 parts=[genai_types.Part(text=agent_input_json)],
@@ -117,7 +117,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
                 }
             outcome = TradeOutcome.model_validate(trade_decision)
             final_message = new_agent_parts_message(
-                parts=[Part(root=DataPart(data=outcome.model_dump()))],
+                parts=[new_data_part(outcome.model_dump())],
                 context_id=context.context_id,
                 task_id=context.task_id,
             )
@@ -127,7 +127,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
             logger.error(f"Error during agent execution: {e}", exc_info=True)
             outcome = TradeOutcome(status=TradeStatus.ERROR, reason=str(e))
             final_message = new_agent_parts_message(
-                parts=[Part(root=DataPart(data=outcome.model_dump()))],
+                parts=[new_data_part(outcome.model_dump())],
                 context_id=context.context_id,
                 task_id=context.task_id,
             )
@@ -139,7 +139,7 @@ class AlphaBotAgentExecutor(AgentExecutor):
                 reason="An unexpected server error occurred.",
             )
             final_message = new_agent_parts_message(
-                parts=[Part(root=DataPart(data=outcome.model_dump()))],
+                parts=[new_data_part(outcome.model_dump())],
                 context_id=context.context_id,
                 task_id=context.task_id,
             )

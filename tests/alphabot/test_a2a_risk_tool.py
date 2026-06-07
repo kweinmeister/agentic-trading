@@ -4,12 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 from a2a.client import (
-    A2AClientHTTPError,
+    A2AClientError,
     A2AClientTimeoutError,
+    AgentCardResolutionError,
 )
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
     AgentCard,
-    DataPart,
     Message,
     Part,
     Role,
@@ -45,8 +46,8 @@ def create_success_response_message(result_data: dict) -> Message:
         message_id="test-message-id",
         context_id="test-context-id",
         task_id="test-task-id",
-        role=Role.agent,
-        parts=[Part(root=DataPart(data=risk_check_result.model_dump(mode="json")))],
+        role=Role.ROLE_AGENT,
+        parts=[new_data_part(risk_check_result.model_dump(mode="json"))],
     )
 
 
@@ -59,9 +60,9 @@ def _verify_a2a_payload(
     mock_a2a_client.send_message.assert_called_once()
     sent_message: Message = mock_a2a_client.send_message.call_args[0][0]
     assert sent_message.parts
-    sent_part = sent_message.parts[0].root
-    assert isinstance(sent_part, DataPart)
-    sent_payload = sent_part.data
+    data_parts = get_data_parts(sent_message.parts)
+    assert len(data_parts) == 1
+    sent_payload = data_parts[0]
     assert isinstance(sent_payload, dict)
     assert sent_payload["trade_proposal"] == args["trade_proposal"]
     assert sent_payload["portfolio_state"] == args["portfolio_state"]
@@ -196,8 +197,8 @@ async def test_run_async_handles_malformed_message(
     }
     malformed_message = Message(
         message_id="malformed-id",
-        role=Role.agent,
-        parts=[Part(root=DataPart(data={"some": "data"}))],
+        role=Role.ROLE_AGENT,
+        parts=[new_data_part({"some": "data"})],
     )
     mock_a2a_client = mock_a2a_sdk_components["mock_a2a_client"]
     mock_resolver_instance = mock_a2a_sdk_components["mock_resolver_instance"]
@@ -301,9 +302,8 @@ async def test_run_async_a2a_http_error(
 
     # Replace the send_message method with our error iterator using the helper function
     mock_a2a_client.send_message = lambda *args, **kwargs: create_async_error_iterator(
-        A2AClientHTTPError,
+        A2AClientError,
         message="Service Unavailable",
-        status_code=503,
     )
 
     # Act
@@ -318,7 +318,7 @@ async def test_run_async_a2a_http_error(
     assert response_data is not None
     assert response_data["approved"] is False
     assert (
-        "A2A Network/HTTP Error: 503 - Service Unavailable. Is RiskGuard running?"
+        "A2A SDK Error: Service Unavailable. Is RiskGuard running?"
         in response_data["reason"]
     )
 
@@ -344,9 +344,9 @@ async def test_run_async_transport_resolution_error(
         "mock_resolver_instance_risk_tool"
     ]
 
-    # Mock the agent card resolution to raise an A2AClientHTTPError
+    # Mock the agent card resolution to raise an AgentCardResolutionError
     error_message = "Could not resolve agent card"
-    mock_resolver_instance_risk_tool.get_agent_card.side_effect = A2AClientHTTPError(
+    mock_resolver_instance_risk_tool.get_agent_card.side_effect = AgentCardResolutionError(
         message=error_message,
         status_code=503,
     )
@@ -365,6 +365,6 @@ async def test_run_async_transport_resolution_error(
 
     # Verify that the error message matches the expected format
     expected_reason = (
-        f"A2A Network/HTTP Error: 503 - {error_message}. Is RiskGuard running?"
+        f"A2A SDK Error: {error_message}. Is RiskGuard running?"
     )
     assert response_data["reason"] == expected_reason
