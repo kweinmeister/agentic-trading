@@ -4,3 +4,4 @@ google-adk==2.2.0
 httpx-sse==0.4.3
 pandas==3.0.3
 plotly==6.7.0
+sse-starlette>=2.1.0
