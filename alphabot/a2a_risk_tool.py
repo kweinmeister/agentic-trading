@@ -76,6 +76,16 @@ class A2ARiskCheckTool(BaseTool):
             await self._httpx_client.aclose()
             logger.info("A2ARiskCheckTool httpx.AsyncClient closed.")
 
+    @property
+    def httpx_client(self) -> httpx.AsyncClient:
+        """Get the internal httpx.AsyncClient."""
+        return self._httpx_client
+
+    @httpx_client.setter
+    def httpx_client(self, client: httpx.AsyncClient) -> None:
+        """Set the internal httpx.AsyncClient."""
+        self._httpx_client = client
+
     def _get_declaration(self) -> genai_types.FunctionDeclaration:
         """Return the ADK FunctionDeclaration for this tool.
 

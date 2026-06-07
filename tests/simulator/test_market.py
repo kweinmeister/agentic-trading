@@ -136,17 +136,21 @@ def test_market_data_simulator_high_volatility() -> None:
         assert price >= 1.0
 
 
-def test_market_data_simulator_negative_trend() -> None:
+def test_market_data_simulator_negative_trend(monkeypatch) -> None:
     """Test MarketDataSimulator with negative trend."""
+    monkeypatch.setattr(
+        "random.normalvariate",
+        lambda mu, sigma: mu,
+    )
     simulator = MarketDataSimulator(initial_price=100.0, volatility=0.01, trend=-0.01)
 
     # Generate prices
-    [simulator.next_price() for _ in range(100)]
+    prices = [simulator.next_price() for _ in range(10)]
 
-    # With negative trend, we expect the final price to generally be lower than initial
-    # though volatility might cause some increases
-    # This is a probabilistic test - in most cases the final price should be lower
-    # but we won't assert this strictly as it could fail due to randomness
+    # With negative trend and deterministic random behavior, prices should strictly decrease
+    assert prices[0] < 100.0
+    for i in range(1, len(prices)):
+        assert prices[i] < prices[i - 1]
 
 
 def test_market_data_simulator_zero_volatility() -> None:

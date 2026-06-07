@@ -1,6 +1,10 @@
 """Fixtures for RiskGuard tests."""
 
+from collections.abc import Callable
+
 import pytest
+from a2a.helpers import new_data_part
+from a2a.types import Message, Role
 
 from common.models import (
     PortfolioState,
@@ -51,3 +55,20 @@ def riskguard_input_data_factory(
         )
 
     return _input_data
+
+
+@pytest.fixture
+def riskguard_message_factory(
+    riskguard_input_data_factory,
+) -> Callable[..., Message]:
+    """Create a complete A2A Message for RiskGuard tests."""
+
+    def _create_message(**kwargs) -> Message:
+        input_data = riskguard_input_data_factory(**kwargs)
+        return Message(
+            message_id="test_message_id",
+            role=Role.ROLE_USER,
+            parts=[new_data_part(input_data.model_dump())],
+        )
+
+    return _create_message
