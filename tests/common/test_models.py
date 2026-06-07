@@ -14,7 +14,7 @@ from common.models import (
 )
 
 
-def test_risk_check_payload_valid():
+def test_risk_check_payload_valid() -> None:
     """Tests that a valid RiskCheckPayload can be created."""
     trade_proposal = TradeProposal(
         action="BUY",
@@ -33,29 +33,40 @@ def test_risk_check_payload_valid():
     assert payload.trade_proposal.action == "BUY"
 
 
-def test_trade_proposal_invalid_action():
+def test_trade_proposal_invalid_action() -> None:
     """Tests that TradeProposal rejects an invalid action."""
+    from typing import Any
+
+    invalid_data: dict[str, Any] = {
+        "action": "HOLD",
+        "ticker": "TECH",
+        "quantity": 100,
+        "price": 150.0,
+    }
     with pytest.raises(ValidationError):
-        TradeProposal(action="HOLD", ticker="TECH", quantity=100, price=150.0)  # type: ignore
+        TradeProposal(**invalid_data)
 
 
-def test_risk_check_payload_missing_required_field():
+def test_risk_check_payload_missing_required_field() -> None:
     """Tests that Pydantic raises an error if required nested models are missing."""
     # Missing 'portfolio_state'
+    from typing import Any
+
+    invalid_data: dict[str, Any] = {
+        "trade_proposal": TradeProposal(
+            action="SELL",
+            ticker="TECH",
+            quantity=50,
+            price=155.0,
+        ),
+    }
     with pytest.raises(ValidationError) as exc_info:
-        RiskCheckPayload(  # type: ignore
-            trade_proposal=TradeProposal(
-                action="SELL",
-                ticker="TECH",
-                quantity=50,
-                price=155.0,
-            ),
-        )
+        RiskCheckPayload(**invalid_data)
 
     assert "portfolio_state" in str(exc_info.value)
 
 
-def test_alphabot_task_payload_valid():
+def test_alphabot_task_payload_valid() -> None:
     """Tests that a valid AlphaBotTaskPayload can be created."""
     portfolio_state = PortfolioState(cash=10000, shares=100, total_value=20000)
     payload = AlphaBotTaskPayload(
@@ -68,7 +79,7 @@ def test_alphabot_task_payload_valid():
     assert payload.current_price == 102.0
 
 
-def test_trade_outcome_approved():
+def test_trade_outcome_approved() -> None:
     """Tests a valid 'APPROVED' TradeOutcome."""
     proposal = TradeProposal(action="BUY", ticker="TEST", quantity=10, price=100)
     outcome = TradeOutcome(
@@ -81,7 +92,7 @@ def test_trade_outcome_approved():
     assert outcome.trade_proposal.action == "BUY"
 
 
-def test_trade_outcome_no_action():
+def test_trade_outcome_no_action() -> None:
     """Tests a valid 'NO_ACTION' TradeOutcome."""
     outcome = TradeOutcome(status=TradeStatus.NO_ACTION, reason="No signal detected")
     assert outcome.status == TradeStatus.NO_ACTION

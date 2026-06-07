@@ -2,9 +2,11 @@
 
 import logging
 
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
-from a2a.helpers import get_data_parts, new_data_part, new_message as new_agent_parts_message
+from a2a.server.tasks.task_updater import TaskUpdater
+from a2a.types import Part, Task, TaskState, TaskStatus
 from google.adk import Runner
 from google.adk.memory import InMemoryMemoryService
 from google.adk.sessions import InMemorySessionService, Session
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 class AlphaBotAgentExecutor(AgentExecutor):
     """Executes the AlphaBot ADK agent logic in response to A2A requests."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the AlphaBotAgentExecutor."""
         self._adk_agent = alphabot_adk_agent
         self._adk_runner = Runner(
@@ -31,26 +33,50 @@ class AlphaBotAgentExecutor(AgentExecutor):
         )
         logger.info("AlphaBotAgentExecutor initialized with ADK Runner.")
 
-    async def execute(self, context: RequestContext, event_queue: EventQueue):
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Receive a unified task payload and run it through the ADK agent.
 
         The structured result is returned in a standard Artifact.
         """
+        if not context.context_id:
+            msg = "Context ID is missing, cannot execute."
+            raise ValueError(msg)
+
+        updater = TaskUpdater(
+            event_queue=event_queue,
+            task_id=context.task_id or "",
+            context_id=context.context_id,
+        )
         outcome = TradeOutcome(
             status=TradeStatus.ERROR,
             reason="Initialization failed.",
         )
         try:
-            # 1. Simplified Payload Parsing
-            if not context.context_id:
-                raise ValueError("Context ID is missing, cannot execute.")
+            # Enqueue the initial Task object to start task mode
+            await event_queue.enqueue_event(
+                Task(
+                    id=context.task_id or "",
+                    context_id=context.context_id or "",
+                    status=TaskStatus(state=TaskState.TASK_STATE_SUBMITTED),
+                    history=[context.message] if context.message else [],
+                ),
+            )
+
+            # Set task state to WORKING
+            await updater.start_work(
+                message=updater.new_agent_message(
+                    parts=[Part(text="Analyzing market and portfolio state...")],
+                ),
+            )
 
             if not context.message or not context.message.parts:
-                raise ValueError("Received an empty or invalid message.")
+                msg = "Received an empty or invalid message."
+                raise ValueError(msg)
 
             data_parts = get_data_parts(context.message.parts)
             if not data_parts:
-                raise ValueError("Expected a DataPart with AlphaBotTaskPayload")
+                msg = "Expected a DataPart with AlphaBotTaskPayload"
+                raise ValueError(msg)
 
             validated_payload = AlphaBotTaskPayload.model_validate(data_parts[0])
             agent_input_json = validated_payload.model_dump_json()
@@ -75,7 +101,8 @@ class AlphaBotAgentExecutor(AgentExecutor):
                     state={},
                 )
             if not session:
-                raise RuntimeError("Failed to create or retrieve ADK session.")
+                msg = "Failed to create or retrieve ADK session."
+                raise RuntimeError(msg)
 
             # 2. Process ADK Output and Wrap in a `TradeOutcome` and `Artifact`
             final_reason_text = "Reason not provided."
@@ -115,40 +142,42 @@ class AlphaBotAgentExecutor(AgentExecutor):
                     "reason": final_reason_text,
                 }
             outcome = TradeOutcome.model_validate(trade_decision)
-            final_message = new_agent_parts_message(
+
+            # Save the result as artifact
+            await updater.add_artifact(
                 parts=[new_data_part(outcome.model_dump())],
-                context_id=context.context_id,
-                task_id=context.task_id,
+                name="response",
+                last_chunk=True,
             )
-            await event_queue.enqueue_event(final_message)
+
+            # Mark task as COMPLETED
+            await updater.complete()
 
         except (ValidationError, ValueError, RuntimeError, AttributeError) as e:
             logger.error(f"Error during agent execution: {e}", exc_info=True)
-            outcome = TradeOutcome(status=TradeStatus.ERROR, reason=str(e))
-            final_message = new_agent_parts_message(
-                parts=[new_data_part(outcome.model_dump())],
-                context_id=context.context_id,
-                task_id=context.task_id,
-            )
-            await event_queue.enqueue_event(final_message)
+            try:
+                error_msg = updater.new_agent_message(parts=[Part(text=str(e))])
+                await updater.failed(message=error_msg)
+            except Exception as e_inner:
+                logger.exception(f"Failed to publish failure update: {e_inner}")
         except Exception as e:
             logger.exception(f"An unexpected error occurred: {e}")
-            outcome = TradeOutcome(
-                status=TradeStatus.ERROR,
-                reason="An unexpected server error occurred.",
-            )
-            final_message = new_agent_parts_message(
-                parts=[new_data_part(outcome.model_dump())],
-                context_id=context.context_id,
-                task_id=context.task_id,
-            )
-            await event_queue.enqueue_event(final_message)
-        finally:
-            await event_queue.close()
+            try:
+                error_msg = updater.new_agent_message(
+                    parts=[Part(text="An unexpected server error occurred.")],
+                )
+                await updater.failed(message=error_msg)
+            except Exception as e_inner:
+                logger.exception(f"Failed to publish failure update: {e_inner}")
 
-    async def cancel(self, context: RequestContext, event_queue: EventQueue):
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Cancel the agent execution."""
         logger.warning(
             f"Cancellation not implemented for synchronous AlphaBot ADK agent task: {context.task_id}",
         )
-        await event_queue.close()
+        updater = TaskUpdater(
+            event_queue=event_queue,
+            task_id=context.task_id or "",
+            context_id=context.context_id or "",
+        )
+        await updater.cancel()

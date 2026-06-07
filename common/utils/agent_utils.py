@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Type, TypeVar
+from typing import TypeVar
 
 from google.adk.agents import InvocationContext
 from pydantic import BaseModel, ValidationError
@@ -42,7 +42,7 @@ def get_service_url(env_var_name: str, host: str, port: int) -> str:
 
 def parse_and_validate_input(
     ctx: InvocationContext,
-    payload_model: Type[T],
+    payload_model: type[T],
     agent_name: str,
 ) -> T | None:
     """Parse and validate the input from the invocation context against a Pydantic model."""
@@ -68,12 +68,12 @@ def parse_and_validate_input(
         )
         return validated_input
     except ValidationError as e:
-        logger.error(
+        logger.exception(
             f"[{agent_name} ({invocation_id_short})] Input validation failed for data '{input_data_str}': {e}",
         )
         return None
     except Exception as e:
-        logger.error(
+        logger.exception(
             f"[{agent_name} ({invocation_id_short})] An unexpected error occurred during parsing: {e}",
         )
         return None

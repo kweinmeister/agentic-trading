@@ -1,22 +1,26 @@
 """Tests for the AlphaBot agent executor."""
 
-import asyncio
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import AsyncMock
 
 import pytest
+from a2a.helpers import get_data_parts, new_data_part
 from a2a.server.agent_execution import RequestContext
 from a2a.server.context import ServerCallContext
-from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
     Message,
-    SendMessageRequest as MessageSendParams,
     Role,
+    TaskState,
 )
+from a2a.types import (
+    SendMessageRequest as MessageSendParams,
+)
+from a2a.types.a2a_pb2 import TaskArtifactUpdateEvent, TaskStatusUpdateEvent
 from google.adk.events import Event, EventActions
 from google.genai import types as genai_types
 
 from alphabot.agent_executor import AlphaBotAgentExecutor
+from tests.conftest import get_executor_results
 
 
 @pytest.fixture
@@ -44,7 +48,6 @@ async def test_execute_success_buy_decision(
     adk_session,
 ) -> None:
     """Test the execute method for a successful buy decision."""
-
     mock_runner_instance = mock_runner_factory("alphabot.agent_executor")
 
     # Arrange
@@ -69,7 +72,7 @@ async def test_execute_success_buy_decision(
     # Mock the session service methods to return a valid session
     mock_runner_instance.session_service.get_session = AsyncMock(return_value=None)
     mock_runner_instance.session_service.create_session = AsyncMock(
-        return_value=adk_session
+        return_value=adk_session,
     )
 
     # Use the adk_mock_alphabot_generator fixture to create the events
@@ -84,8 +87,8 @@ async def test_execute_success_buy_decision(
                         "ticker": "TECH",
                         "quantity": 100,
                         "price": 110.0,
-                    }
-                }
+                    },
+                },
             ),
         )
         # Yield a final event with the reason text
@@ -94,9 +97,9 @@ async def test_execute_success_buy_decision(
             content=genai_types.Content(
                 parts=[
                     genai_types.Part(
-                        text="Trade Approved (A2A): Within risk parameters."
-                    )
-                ]
+                        text="Trade Approved (A2A): Within risk parameters.",
+                    ),
+                ],
             ),
             turn_complete=True,
         )
@@ -108,22 +111,20 @@ async def test_execute_success_buy_decision(
     executor = AlphaBotAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
 
-    # Run the executor in a background task to avoid deadlock
-    execution_task = asyncio.create_task(executor.execute(context, event_queue))
+    # Run the executor
+    await executor.execute(context, event_queue)
 
-    # Assert
-    # Dequeue the message and mark it as done
-    enqueued_message = await event_queue.dequeue_event()
-    event_queue.task_done()
+    # Dequeue and verify results
+    enqueued_message, _events = await get_executor_results(event_queue)
 
-    # Wait for the executor task to finish (which includes closing the queue)
-    await execution_task
-
+    # Close the queue manually for testing
+    await event_queue.close()
     assert event_queue.is_closed()
 
     # Verify the message content
-    assert enqueued_message.parts is not None
-    data_parts = get_data_parts(enqueued_message.parts)
+    assert isinstance(enqueued_message, TaskArtifactUpdateEvent)
+    assert enqueued_message.artifact.parts is not None
+    data_parts = get_data_parts(enqueued_message.artifact.parts)
     assert len(data_parts) == 1
 
     expected_data = {
@@ -137,6 +138,12 @@ async def test_execute_success_buy_decision(
         },
     }
     assert data_parts[0] == expected_data
+    # Assert lifecycle events are emitted
+    assert any(
+        isinstance(e, TaskStatusUpdateEvent)
+        and e.status.state == TaskState.TASK_STATE_COMPLETED
+        for e in _events
+    )
 
 
 @pytest.mark.asyncio
@@ -154,31 +161,26 @@ async def test_execute_missing_market_data(mock_runner_factory, event_queue) -> 
     # Act
     executor = AlphaBotAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
-    execution_task = asyncio.create_task(
-        executor.execute(
-            context=RequestContext(
-                ServerCallContext(),
-                request=MessageSendParams(message=request_message),
-                context_id="test-context-456",
-                task_id="test-task-123",
-            ),
-            event_queue=event_queue,
-        )
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-context-456",
+            task_id="test-task-123",
+        ),
+        event_queue=event_queue,
     )
 
-    # Assert
-    enqueued_message = await event_queue.dequeue_event()
-    event_queue.task_done()
+    enqueued_message, _events = await get_executor_results(event_queue)
 
-    await execution_task
+    await event_queue.close()
     assert event_queue.is_closed()
 
-    assert isinstance(enqueued_message, Message)
+    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    data_parts = get_data_parts(enqueued_message.parts)
-    assert len(data_parts) == 1
-    assert "validation error" in data_parts[0]["reason"]
+    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
+    assert "validation error" in enqueued_message.status.message.parts[0].text
 
 
 @pytest.mark.asyncio
@@ -201,33 +203,28 @@ async def test_execute_adk_runner_exception(
     # Act
     executor = AlphaBotAgentExecutor()
     executor._adk_runner = mock_runner_instance  # Inject the mock runner
-    execution_task = asyncio.create_task(
-        executor.execute(
-            context=RequestContext(
-                ServerCallContext(),
-                request=MessageSendParams(message=request_message),
-                context_id="test-context-456",
-                task_id="test-task-123",
-            ),
-            event_queue=event_queue,
-        )
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-context-456",
+            task_id="test-task-123",
+        ),
+        event_queue=event_queue,
     )
 
-    # Assert
-    enqueued_message = await event_queue.dequeue_event()
-    event_queue.task_done()
+    enqueued_message, _events = await get_executor_results(event_queue)
 
-    await execution_task
+    await event_queue.close()
     assert event_queue.is_closed()
 
-    assert isinstance(enqueued_message, Message)
+    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
     assert enqueued_message.context_id == "test-context-456"
     assert enqueued_message.task_id == "test-task-123"
-    data_parts = get_data_parts(enqueued_message.parts)
-    assert len(data_parts) == 1
+    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
     assert (
         "An unexpected server error occurred."
-        in data_parts[0]["reason"]
+        in enqueued_message.status.message.parts[0].text
     )
 
 
@@ -237,40 +234,38 @@ async def test_execute_handles_adk_runner_exception(
     mock_runner_factory,
     event_queue,
 ) -> None:
-    """Test that if the ADK runner fails, the executor enqueues an error message.
-
-    and closes the queue.
-    """
+    """Test that if the ADK runner fails, the executor enqueues an error message."""
     # Arrange
     mock_runner = mock_runner_factory("alphabot.agent_executor")
     # Simulate an exception during the ADK agent's execution
     mock_runner.run_async.side_effect = Exception("ADK agent failed!")
 
     request_message = alphabot_message_factory()
-    context = RequestContext(ServerCallContext(), request=MessageSendParams(message=request_message))
+    context = RequestContext(
+        ServerCallContext(),
+        request=MessageSendParams(message=request_message),
+    )
 
     # Act
     executor = AlphaBotAgentExecutor()
     executor._adk_runner = mock_runner  # Inject the mock runner
 
-    execution_task = asyncio.create_task(executor.execute(context, event_queue))
+    await executor.execute(context, event_queue)
 
-    # Assert
-    # 1. An event was enqueued
-    enqueued_message = await event_queue.dequeue_event()
-    event_queue.task_done()
+    # Dequeue and verify results
+    enqueued_message, _events = await get_executor_results(event_queue)
 
-    await execution_task
+    await event_queue.close()
     assert event_queue.is_closed()
 
-    # 2. The enqueued event is a Message containing error details
-    assert isinstance(enqueued_message, Message)
+    # The enqueued event is a TaskStatusUpdateEvent containing error details
+    assert isinstance(enqueued_message, TaskStatusUpdateEvent)
+    assert enqueued_message.status.state == TaskState.TASK_STATE_FAILED
 
-    # 3. The message part contains the error
-    data_parts = get_data_parts(enqueued_message.parts)
-    assert len(data_parts) == 1
-    assert data_parts[0]["status"] == "ERROR"
-    assert "An unexpected server error occurred." in data_parts[0]["reason"]
+    assert (
+        "An unexpected server error occurred."
+        in enqueued_message.status.message.parts[0].text
+    )
 
 
 @pytest.mark.asyncio
@@ -301,25 +296,28 @@ async def test_execute_returns_dict_not_string(
     # Act
     executor = AlphaBotAgentExecutor()
     executor._adk_runner = mock_runner_instance
-    execution_task = asyncio.create_task(
-        executor.execute(
-            context=RequestContext(
-                ServerCallContext(),
-                request=MessageSendParams(message=request_message),
-                context_id="test-context-456",
-                task_id="test-task-123",
-            ),
-            event_queue=event_queue,
-        )
+    await executor.execute(
+        context=RequestContext(
+            ServerCallContext(),
+            request=MessageSendParams(message=request_message),
+            context_id="test-context-456",
+            task_id="test-task-123",
+        ),
+        event_queue=event_queue,
     )
 
-    # Assert
-    enqueued_message = await event_queue.dequeue_event()
-    event_queue.task_done()
+    enqueued_message, _events = await get_executor_results(event_queue)
 
-    await execution_task
+    await event_queue.close()
     assert event_queue.is_closed()
 
-    data_parts = get_data_parts(enqueued_message.parts)
+    assert isinstance(enqueued_message, TaskArtifactUpdateEvent)
+    data_parts = get_data_parts(enqueued_message.artifact.parts)
     assert len(data_parts) == 1
     assert isinstance(data_parts[0], dict)
+    # Assert lifecycle events are emitted
+    assert any(
+        isinstance(e, TaskStatusUpdateEvent)
+        and e.status.state == TaskState.TASK_STATE_COMPLETED
+        for e in _events
+    )

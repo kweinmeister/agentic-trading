@@ -3,7 +3,7 @@
 import logging
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 from a2a.client import (
@@ -13,11 +13,12 @@ from a2a.client import (
     ClientConfig,
     ClientFactory,
 )
-
 from a2a.helpers import get_data_parts, new_data_part
 from a2a.types import (
     Message,
     Role,
+    SendMessageRequest,
+    TaskState,
 )
 from google.adk.events import Event
 from google.adk.tools import BaseTool, ToolContext
@@ -49,24 +50,27 @@ class A2ARiskCheckTool(BaseTool):
     risk_guard_url: str
     _httpx_client: httpx.AsyncClient
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         """Initialize the A2ARiskCheckTool."""
         # Pop custom arguments for this class before calling super()
         # Configure httpx.AsyncClient with the timeout
         self._httpx_client = kwargs.pop(
             "httpx_client",
-            httpx.AsyncClient(timeout=RISKGUARD_A2A_TIMEOUT_SECONDS),
+            httpx.AsyncClient(
+                timeout=RISKGUARD_A2A_TIMEOUT_SECONDS,
+            ),
         )
         risk_guard_service_url = os.environ.get(
             "RISKGUARD_SERVICE_URL",
             DEFAULT_RISKGUARD_URL,
         )
         self.risk_guard_url = kwargs.pop("risk_guard_url", risk_guard_service_url)
+        self._a2a_sdk_clients: dict[str, Any] = {}
 
         # Now, kwargs only contains arguments meant for the parent class
         super().__init__(name=self.name, description=self.description, **kwargs)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the httpx.AsyncClient when the tool is no longer needed."""
         if self._httpx_client:
             await self._httpx_client.aclose()
@@ -155,7 +159,7 @@ class A2ARiskCheckTool(BaseTool):
     async def run_async(self, **kwargs: Any) -> Event:
         """Make the actual A2A HTTP call."""
         tool_context: ToolContext = kwargs["tool_context"]
-        args: Dict[str, Any] = kwargs["args"]
+        args: dict[str, Any] = kwargs["args"]
         invocation_id_short = tool_context.invocation_id[:8]
         logger.debug(
             f"[{self.name} Tool ({invocation_id_short})] Received args: {args}",
@@ -225,69 +229,111 @@ class A2ARiskCheckTool(BaseTool):
             max_concentration=max_concentration,
         )
 
-        # Corrected approach based on SDK source
-        client_config = ClientConfig(httpx_client=self._httpx_client)
-        client_factory = ClientFactory(config=client_config)
-        card_resolver = A2ACardResolver(
-            httpx_client=self._httpx_client,
-            base_url=risk_guard_target_url,
-        )
-
         try:
-            agent_card = await card_resolver.get_agent_card()
-            a2a_sdk_client = client_factory.create(agent_card)
+            a2a_sdk_client = self._a2a_sdk_clients.get(risk_guard_target_url)
+            if not a2a_sdk_client:
+                client_config = ClientConfig(httpx_client=self._httpx_client)
+                client_factory = ClientFactory(config=client_config)
+                card_resolver = A2ACardResolver(
+                    httpx_client=self._httpx_client,
+                    base_url=risk_guard_target_url,
+                )
+                agent_card = await card_resolver.get_agent_card()
+                a2a_sdk_client = client_factory.create(agent_card)
+                self._a2a_sdk_clients[risk_guard_target_url] = a2a_sdk_client
 
             # The new client uses a streaming response. We need to iterate.
-            # The `send_message` method expects the `Message` object directly.
             message_to_send = Message(
                 message_id=f"msg-{uuid.uuid4().hex[:8]}",
                 role=Role.ROLE_USER,
                 parts=[
                     new_data_part(risk_payload.model_dump(mode="json")),
                 ],
+                context_id=tool_context.session.id,
             )
-            async for event in a2a_sdk_client.send_message(message_to_send):
-                if isinstance(event, Message):
-                    data_parts = get_data_parts(event.parts)
+            request = SendMessageRequest(message=message_to_send)
+            stream = a2a_sdk_client.send_message(request)
+
+            def process_part_data(part_data: Any) -> None:
+                nonlocal final_result_dict
+                try:
+                    risk_result_model = RiskCheckResult.model_validate(part_data)
+                    final_result_dict = risk_result_model.model_dump()
+                except ValidationError:
+                    final_result_dict["reason"] = "Malformed response from RiskGuard"
+
+            async for event in stream:
+                if event.HasField("message"):
+                    data_parts = get_data_parts(event.message.parts)
                     if data_parts:
-                        part_data = data_parts[0]
-                        try:
-                            risk_result_model = RiskCheckResult.model_validate(
-                                part_data,
-                            )
-                            final_result_dict = risk_result_model.model_dump()
-                        except ValidationError:
-                            final_result_dict["reason"] = (
-                                "Malformed response from RiskGuard"
-                            )
+                        process_part_data(data_parts[0])
                     else:
                         final_result_dict["reason"] = (
                             "Malformed response from RiskGuard"
                         )
-                    break  # Assuming we only need the first message
-                if isinstance(event, tuple):  # It's a ClientEvent (Task, Update)
-                    task, _ = event
+                    break
+                if event.HasField("artifact_update"):
+                    if event.artifact_update.artifact.name == "response":
+                        data_parts = get_data_parts(
+                            event.artifact_update.artifact.parts,
+                        )
+                        if data_parts:
+                            process_part_data(data_parts[0])
+                        else:
+                            final_result_dict["reason"] = (
+                                "Malformed response from RiskGuard"
+                            )
+                        break
                     logger.debug(
-                        f"Received task update for {task.id}: {task.status.state}",
+                        f"Received unexpected artifact update '{event.artifact_update.artifact.name}' from RiskGuard, ignoring.",
                     )
-
+                elif event.HasField("status_update"):
+                    state = event.status_update.status.state
+                    if state == TaskState.TASK_STATE_FAILED:
+                        final_result_dict["reason"] = "RiskGuard execution failed."
+                        break
+                elif event.HasField("task"):
+                    logger.debug(
+                        f"Received task update for {event.task.id}: {event.task.status.state}",
+                    )
+                    # Extract response artifact if present in the final Task payload
+                    response_artifact = next(
+                        (art for art in event.task.artifacts if art.name == "response"),
+                        None,
+                    )
+                    if response_artifact:
+                        data_parts = get_data_parts(response_artifact.parts)
+                        if data_parts:
+                            process_part_data(data_parts[0])
+                        else:
+                            final_result_dict["reason"] = (
+                                "Malformed response from RiskGuard"
+                            )
+                        break
+                    if event.task.status.state == TaskState.TASK_STATE_FAILED:
+                        error_msg = (
+                            event.task.status.message.parts[0].text
+                            if event.task.status.message
+                            and len(event.task.status.message.parts) > 0
+                            else "RiskGuard execution failed."
+                        )
+                        final_result_dict["reason"] = (
+                            f"RiskGuard execution failed: {error_msg}"
+                        )
+                        break
 
         except A2AClientTimeoutError as e:
             logger.error(
                 f"[{self.name} Tool ({invocation_id_short})] A2A SDK Timeout error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
                 exc_info=True,
             )
-            final_result_dict["reason"] = (
-                f"Timeout Error: {e}"
-            )
+            final_result_dict["reason"] = f"Timeout Error: {e}"
         except A2AClientError as e:
             logger.error(
                 f"[{self.name} Tool ({invocation_id_short})] A2A SDK error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
                 exc_info=True,
             )
-            final_result_dict["reason"] = (
-                f"A2A SDK Error: {e}. Is RiskGuard running?"
-            )
+            final_result_dict["reason"] = f"A2A SDK Error: {e}. Is RiskGuard running?"
         except ValidationError as e:
             logger.error(
                 f"[{self.name} Tool ({invocation_id_short})] A2A Response Validation Error: {e}",

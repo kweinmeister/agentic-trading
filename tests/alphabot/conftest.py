@@ -131,8 +131,7 @@ def alphabot_input_data_factory(base_portfolio_state: PortfolioState):
         if "day" not in kwargs:
             kwargs["day"] = 1
 
-        payload = AlphaBotTaskPayload(portfolio_state=final_portfolio_state, **kwargs)
-        return payload
+        return AlphaBotTaskPayload(portfolio_state=final_portfolio_state, **kwargs)
 
     return _input_data
 

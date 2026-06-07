@@ -44,11 +44,10 @@ def riskguard_input_data_factory(
                 final_portfolio_state = update_data
 
         # 3. Create the final payload from the model instances
-        payload = RiskCheckPayload(
+        return RiskCheckPayload(
             trade_proposal=final_trade_proposal,
             portfolio_state=final_portfolio_state,
             **kwargs,  # Apply any other top-level overrides
         )
-        return payload
 
     return _input_data

@@ -38,14 +38,14 @@ def mock_a2a_call():
         yield mock
 
 
-def test_health_check():
+def test_health_check() -> None:
     """Test the health check endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_read_main():
+def test_read_main() -> None:
     """Test the main endpoint."""
     response = client.get("/")
     assert response.status_code == 200
@@ -57,7 +57,7 @@ async def test_call_alphabot_a2a_with_factory(
     mock_a2a_sdk_components,
     test_agent_card,
     mock_a2a_send_message_generator,
-):
+) -> None:
     """Verify that _call_alphabot_a2a correctly uses the ClientFactory."""
     mock_logger = MagicMock()
     mock_factory_instance = mock_a2a_sdk_components["mock_factory_instance"]
@@ -104,6 +104,7 @@ async def test_call_alphabot_a2a_with_factory(
     # The function under test will now use the patched components from the fixture
     outcome = await _call_alphabot_a2a(
         client_factory=mock_factory_instance,  # Pass the correct mock
+        httpx_client=mock_factory_instance._config.httpx_client,
         alphabot_url="http://test.com",
         session_id="test-session-123",
         day=1,
@@ -120,7 +121,7 @@ async def test_call_alphabot_a2a_with_factory(
 
 
 @pytest.mark.asyncio
-async def test_call_alphabot_a2a_factory_raises_transport_error():
+async def test_call_alphabot_a2a_factory_raises_transport_error() -> None:
     """Test that _call_alphabot_a2a handles transport resolution errors."""
     mock_factory = AsyncMock(spec=ClientFactory)
     mock_logger = MagicMock()
@@ -144,6 +145,7 @@ async def test_call_alphabot_a2a_factory_raises_transport_error():
         with pytest.raises(ConnectionError):
             await _call_alphabot_a2a(
                 client_factory=mock_factory,
+                httpx_client=mock_factory._config.httpx_client,
                 alphabot_url="http://test.com",
                 session_id="test-session-123",
                 day=1,
@@ -162,7 +164,7 @@ async def test_call_alphabot_a2a_factory_raises_transport_error():
             )
 
 
-def test_run_simulation_success(mock_a2a_call):
+def test_run_simulation_success(mock_a2a_call) -> None:
     """Test a successful simulation run."""
     response = client.post(
         "/run_simulation",
@@ -189,7 +191,7 @@ def test_run_simulation_success(mock_a2a_call):
     assert "Total Value" in response.text
 
 
-def test_run_simulation_invalid_params():
+def test_run_simulation_invalid_params() -> None:
     """Test simulation run with invalid parameters."""
     response = client.post(
         "/run_simulation",
@@ -213,7 +215,7 @@ def test_run_simulation_invalid_params():
     assert "Input should be greater than 0" in response.text
 
 
-def test_run_simulation_connection_error(mock_a2a_call):
+def test_run_simulation_connection_error(mock_a2a_call) -> None:
     """Test simulation run with an A2A connection error."""
     mock_a2a_call.side_effect = ConnectionError("Test connection error")
 
@@ -238,7 +240,7 @@ def test_run_simulation_connection_error(mock_a2a_call):
     assert "Simulation failed: Connection Error" in response.text
 
 
-def test_concurrent_simulations_no_race_condition():
+def test_concurrent_simulations_no_race_condition() -> None:
     """Test that concurrent simulations don't interfere with each other.
 
     This test demonstrates that the race condition has been fixed by
@@ -248,7 +250,7 @@ def test_concurrent_simulations_no_race_condition():
     import asyncio
     from unittest.mock import AsyncMock, patch
 
-    async def run_single_simulation(simulation_id):
+    async def run_single_simulation(simulation_id: int):
         """Run a single simulation with unique parameters."""
         with patch("simulator.main._call_alphabot_a2a", new_callable=AsyncMock) as mock:
             # Configure the mock to return different results based on simulation_id
@@ -264,7 +266,7 @@ def test_concurrent_simulations_no_race_condition():
                 "error": None,
             }
 
-            response = client.post(
+            return client.post(
                 "/run_simulation",
                 data={
                     "alphabot_short_sma": str(10 + simulation_id),
@@ -281,13 +283,11 @@ def test_concurrent_simulations_no_race_condition():
                     "alphabot_url": defaults.DEFAULT_ALPHABOT_URL,
                 },
             )
-            return response
 
     async def run_concurrent_simulations():
         """Run multiple simulations concurrently."""
         tasks = [run_single_simulation(i) for i in range(3)]
-        responses = await asyncio.gather(*tasks)
-        return responses
+        return await asyncio.gather(*tasks)
 
     # Run the concurrent simulations
     responses = asyncio.run(run_concurrent_simulations())

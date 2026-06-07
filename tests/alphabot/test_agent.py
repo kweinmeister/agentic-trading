@@ -15,15 +15,27 @@ from common.config import DEFAULT_TICKER
 from common.models import PortfolioState
 
 
-def test_alphabot_agent_instantiation():
+def _get_text(event: Event) -> str:
+    """Helper to safely extract text content from an Event for assertions."""
+    assert event.content is not None
+    assert event.content.parts is not None
+    assert len(event.content.parts) > 0
+    text = event.content.parts[0].text
+    assert text is not None
+    return text
+
+
+def test_alphabot_agent_instantiation() -> None:
     """Tests basic instantiation of the AlphaBotAgent."""
     try:
         agent = AlphaBotAgent(stock_ticker="TEST_TICKER")
         assert agent is not None
         assert agent.name == "AlphaBot"
         assert agent.ticker == "TEST_TICKER"
-        assert agent.tools is not None and len(agent.tools) == 1
-        assert agent.tools is not None and isinstance(agent.tools[0], A2ARiskCheckTool)
+        assert agent.tools is not None
+        assert len(agent.tools) == 1
+        assert agent.tools is not None
+        assert isinstance(agent.tools[0], A2ARiskCheckTool)
         default_agent = AlphaBotAgent()
         assert default_agent.ticker == DEFAULT_TICKER
     except Exception as e:
@@ -35,7 +47,7 @@ async def test_alphabot_run_async_impl_no_signal(
     agent: AlphaBotAgent,
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
-):
+) -> None:
     """Tests _run_async_impl when no crossover signal is generated."""
     adk_ctx.session.state = {"should_be_long": False}
 
@@ -71,7 +83,7 @@ async def test_alphabot_run_async_impl_no_signal(
         assert len(events) == 1
         final_event = events[0]
         assert final_event.author == agent.name
-        assert "No signal (Conditions not met)" in final_event.content.parts[0].text
+        assert "No signal (Conditions not met)" in _get_text(final_event)
         assert not final_event.actions.state_delta
 
 
@@ -81,7 +93,7 @@ async def test_alphabot_run_async_impl_buy_approved(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_buy_signal,
-):
+) -> None:
     """Tests _run_async_impl for a BUY signal that is approved by RiskGuard."""
     adk_ctx.session.state = {"should_be_long": False}
 
@@ -125,12 +137,12 @@ async def test_alphabot_run_async_impl_buy_approved(
         # Check the proposal event
         proposal_event = events[0]
         assert proposal_event.author == agent.name
-        assert "Proposing BUY" in proposal_event.content.parts[0].text
+        assert "Proposing BUY" in _get_text(proposal_event)
 
         # Check the final event
         final_event = events[1]
         assert final_event.author == agent.name
-        assert "Trade Approved (A2A)" in final_event.content.parts[0].text
+        assert "Trade Approved (A2A)" in _get_text(final_event)
         assert final_event.actions.state_delta["should_be_long"] is True
         assert "approved_trade" in final_event.actions.state_delta
 
@@ -141,7 +153,7 @@ async def test_alphabot_run_async_impl_sell_approved(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_sell_signal,
-):
+) -> None:
     """Tests _run_async_impl for a SELL signal that is approved by RiskGuard."""
     adk_ctx.session.state = {"should_be_long": True}
 
@@ -185,18 +197,18 @@ async def test_alphabot_run_async_impl_sell_approved(
         # Check the proposal event
         proposal_event = events[0]
         assert proposal_event.author == agent.name
-        assert "Proposing SELL" in proposal_event.content.parts[0].text
+        assert "Proposing SELL" in _get_text(proposal_event)
 
         # Check the final event
         final_event = events[1]
         assert final_event.author == agent.name
-        assert "Trade Approved (A2A)" in final_event.content.parts[0].text
+        assert "Trade Approved (A2A)" in _get_text(final_event)
         assert final_event.actions.state_delta["should_be_long"] is False
         assert "approved_trade" in final_event.actions.state_delta
 
 
 @pytest.mark.asyncio
-async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent):
+async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent) -> None:
     """Tests that _generate_signal correctly identifies a 'SELL' signal on a death cross."""
     sma_short = 95.0
     sma_long = 100.0
@@ -213,7 +225,7 @@ async def test_generate_signal_sell_death_cross(agent: AlphaBotAgent):
 
 
 @pytest.mark.asyncio
-async def test_generate_signal_no_signal_sma_none(agent: AlphaBotAgent):
+async def test_generate_signal_no_signal_sma_none(agent: AlphaBotAgent) -> None:
     """Tests that _generate_signal returns None when any SMA value is None."""
     assert agent._generate_signal(None, 100.0, 102.0, 101.0, "test_invocation") is None
     assert agent._generate_signal(95.0, None, 102.0, 101.0, "test_invocation") is None
@@ -221,7 +233,7 @@ async def test_generate_signal_no_signal_sma_none(agent: AlphaBotAgent):
     assert agent._generate_signal(95.0, 100.0, 102.0, None, "test_invocation") is None
 
 
-def test_determine_trade_proposal_no_buy_when_long(agent: AlphaBotAgent):
+def test_determine_trade_proposal_no_buy_when_long(agent: AlphaBotAgent) -> None:
     """Tests that _determine_trade_proposal returns None for a BUY signal when already long."""
     portfolio_state = PortfolioState(cash=10000, shares=10, total_value=11000)
     proposal = agent._determine_trade_proposal(
@@ -241,7 +253,7 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_sell_signal,
-):
+) -> None:
     """Tests the full end-to-end flow for a successful 'SELL' trade."""
     adk_ctx.session.state = {"should_be_long": True}
 
@@ -281,7 +293,7 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
         assert len(events) == 2
         final_event = events[1]
         assert final_event.author == agent.name
-        assert "Trade Approved (A2A)" in final_event.content.parts[0].text
+        assert "Trade Approved (A2A)" in _get_text(final_event)
         assert final_event.actions.state_delta["should_be_long"] is False
         assert "approved_trade" in final_event.actions.state_delta
 
@@ -290,7 +302,7 @@ async def test_alphabot_run_async_impl_sell_approved_e2e(
 async def test_alphabot_run_async_impl_invalid_input(
     agent: AlphaBotAgent,
     adk_ctx: InvocationContext,
-):
+) -> None:
     """Tests that the agent handles malformed input data gracefully."""
     adk_ctx.user_content = genai_types.Content(
         parts=[genai_types.Part(text="not a valid json")],
@@ -303,10 +315,7 @@ async def test_alphabot_run_async_impl_invalid_input(
     assert len(events) == 1
     final_event = events[0]
     assert final_event.author == agent.name
-    assert (
-        "Error: Invalid input data structure or values."
-        in final_event.content.parts[0].text
-    )
+    assert "Error: Invalid input data structure or values." in _get_text(final_event)
 
 
 @pytest.mark.asyncio
@@ -315,7 +324,7 @@ async def test_alphabot_run_async_impl_buy_rejected(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_buy_signal,
-):
+) -> None:
     """Tests _run_async_impl for a BUY signal that is rejected by RiskGuard."""
     adk_ctx.session.state = {"should_be_long": False}
 
@@ -355,12 +364,12 @@ async def test_alphabot_run_async_impl_buy_rejected(
         assert len(events) == 2
         final_event = events[1]
         assert final_event.author == agent.name
-        assert "Trade Rejected (A2A)" in final_event.content.parts[0].text
+        assert "Trade Rejected (A2A)" in _get_text(final_event)
         assert "should_be_long" not in final_event.actions.state_delta
         assert "rejected_trade_proposal" in final_event.actions.state_delta
 
 
-def test_determine_trade_proposal_no_sell_when_not_long(agent: AlphaBotAgent):
+def test_determine_trade_proposal_no_sell_when_not_long(agent: AlphaBotAgent) -> None:
     """Tests that _determine_trade_proposal returns None for a SELL signal when not long."""
     portfolio_state = PortfolioState(cash=10000, shares=0, total_value=10000)
     proposal = agent._determine_trade_proposal(
@@ -374,7 +383,9 @@ def test_determine_trade_proposal_no_sell_when_not_long(agent: AlphaBotAgent):
     assert proposal is None
 
 
-def test_determine_trade_proposal_no_sell_when_long_no_shares(agent: AlphaBotAgent):
+def test_determine_trade_proposal_no_sell_when_long_no_shares(
+    agent: AlphaBotAgent,
+) -> None:
     """Tests that _determine_trade_proposal returns None for a SELL signal when long but with no shares."""
     portfolio_state = PortfolioState(cash=10000, shares=0, total_value=10000)
     proposal = agent._determine_trade_proposal(
@@ -394,7 +405,7 @@ async def test_alphabot_run_async_impl_state_correction_sell_no_shares(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_sell_signal,
-):
+) -> None:
     """Tests _run_async_impl for a SELL signal that triggers state correction due to no shares held."""
     adk_ctx.session.state = {"should_be_long": True}
 
@@ -441,7 +452,7 @@ async def test_alphabot_run_async_impl_state_correction_sell_no_shares(
         final_event = events[0]
         assert final_event.author == agent.name
         assert final_event.turn_complete is True
-        assert "State correction" in final_event.content.parts[0].text
+        assert "State correction" in _get_text(final_event)
         assert final_event.actions.state_delta["should_be_long"] is False
 
 
@@ -451,7 +462,7 @@ async def test_alphabot_concurrency(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_buy_signal,
-):
+) -> None:
     """Tests that the agent can handle concurrent requests without race conditions."""
     adk_ctx.session.state = {"should_be_long": False}
 
@@ -499,10 +510,7 @@ async def test_alphabot_concurrency(
             assert len(events) == 2
             final_event = events[1]
             assert final_event.author == agent.name
-            assert final_event.content is not None
-            assert final_event.content.parts is not None
-            assert final_event.content.parts[0].text is not None
-            assert "Trade Approved (A2A)" in final_event.content.parts[0].text
+            assert "Trade Approved (A2A)" in _get_text(final_event)
             assert final_event.actions.state_delta["should_be_long"] is True
 
 
@@ -512,7 +520,7 @@ async def test_alphabot_does_not_repropose_rejected_trade(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_buy_signal,
-):
+) -> None:
     """Test that AlphaBot does not re-propose a recently rejected trade.
 
     This test simulates a scenario where a BUY signal is generated, the
@@ -560,10 +568,7 @@ async def test_alphabot_does_not_repropose_rejected_trade(
         # Expect a rejection (proposal and rejection events)
         assert len(events_run1) == 2
         final_event_run1 = events_run1[1]
-        assert final_event_run1.content is not None
-        assert final_event_run1.content.parts is not None
-        assert final_event_run1.content.parts[0].text is not None
-        assert "Trade Rejected (A2A)" in final_event_run1.content.parts[0].text
+        assert "Trade Rejected (A2A)" in _get_text(final_event_run1)
         assert "should_be_long" not in final_event_run1.actions.state_delta
 
         # --- Second Invocation: Should NOT propose again ---
@@ -576,18 +581,15 @@ async def test_alphabot_does_not_repropose_rejected_trade(
         # Assert that NO new trade was proposed
         assert len(events_run2) == 1
         final_event_run2 = events_run2[0]
-        assert final_event_run2.content is not None
-        assert final_event_run2.content.parts is not None
-        assert final_event_run2.content.parts[0].text is not None
         assert (
             "Signal generated, but no trade action needed based on current state or recent rejections."
-            in final_event_run2.content.parts[0].text
+            in _get_text(final_event_run2)
         )
 
 
 def test_determine_trade_proposal_rejects_sell_if_quantity_exceeds_shares(
     agent: AlphaBotAgent,
-):
+) -> None:
     """Test that `_determine_trade_proposal` returns None for a SELL signal.
 
     This occurs when the configured trade quantity exceeds the number of
@@ -611,7 +613,7 @@ async def test_alphabot_run_async_impl_insufficient_data(
     agent: AlphaBotAgent,
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
-):
+) -> None:
     """Tests that the agent handles insufficient historical data gracefully."""
     adk_ctx.session.state = {"should_be_long": False}
 
@@ -633,7 +635,7 @@ async def test_alphabot_run_async_impl_insufficient_data(
     assert len(events) == 1
     final_event = events[0]
     assert final_event.author == agent.name
-    assert "No signal yet (calculating SMAs)." in final_event.content.parts[0].text
+    assert "No signal yet (calculating SMAs)." in _get_text(final_event)
     assert not final_event.actions.state_delta
 
 
@@ -643,7 +645,7 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
     adk_ctx: InvocationContext,
     alphabot_input_data_factory,
     historical_prices_buy_signal,
-):
+) -> None:
     """Test that if a BUY signal is generated but the agent is already long, it produces a NO_ACTION outcome."""
     adk_ctx.session.state = {"should_be_long": True}  # Agent is already long
 
@@ -666,6 +668,6 @@ async def test_alphabot_run_async_impl_buy_signal_corrects_state(
     assert final_event.author == agent.name
     assert (
         "Signal generated, but no trade action needed based on current state or recent rejections."
-        in final_event.content.parts[0].text
+        in _get_text(final_event)
     )
     assert not final_event.actions.state_delta
