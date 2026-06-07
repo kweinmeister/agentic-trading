@@ -387,28 +387,17 @@ async def _call_alphabot_a2a(
         "reason": None,
         "error": None,
     }
-
     try:
-        from unittest.mock import Mock
-
-        if isinstance(client_factory, Mock):
+        a2a_sdk_client = cache.get("a2a_client") if cache is not None else None
+        if not a2a_sdk_client:
             card_resolver = A2ACardResolver(
                 httpx_client=httpx_client,
                 base_url=alphabot_url,
             )
             agent_card = await card_resolver.get_agent_card()
             a2a_sdk_client = client_factory.create(agent_card)
-        else:
-            a2a_sdk_client = cache.get("a2a_client") if cache is not None else None
-            if not a2a_sdk_client:
-                card_resolver = A2ACardResolver(
-                    httpx_client=httpx_client,
-                    base_url=alphabot_url,
-                )
-                agent_card = await card_resolver.get_agent_card()
-                a2a_sdk_client = client_factory.create(agent_card)
-                if cache is not None:
-                    cache["a2a_client"] = a2a_sdk_client
+            if cache is not None:
+                cache["a2a_client"] = a2a_sdk_client
 
         # The new client returns a stream. We iterate and process the events.
         message_to_send = A2AMessage(

@@ -11,7 +11,7 @@ WORKDIR /app/agentic_trading
 COPY pyproject.toml uv.lock /app/
 
 # Install dependencies using uv sync
-RUN uv sync --project /app --frozen --no-dev
+RUN uv sync --project /app --frozen --no-dev --no-install-project
 
 # Copy the root __init__.py to make agentic_trading a package in the WORKDIR
 COPY __init__.py .
