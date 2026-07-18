@@ -1,6 +1,5 @@
 """Tests for the RiskGuard rules."""
 
-from typing import Literal, cast
 
 import pytest
 
@@ -190,10 +189,7 @@ def test_check_trade_risk_logic_scenarios(
 ) -> None:
     """Test check_trade_risk_logic with various parameterized scenarios."""
     trade_proposal = TradeProposal(
-        action=cast(
-            "Literal['BUY', 'SELL']",
-            action if action in ("BUY", "SELL") else "BUY",
-        ),
+        action=action if action in ("BUY", "SELL") else "BUY",
         ticker="TECH",
         quantity=quantity,
         price=price,
