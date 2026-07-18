@@ -10,7 +10,7 @@ dependencies = [
   "httpx-sse==0.4.3",
   "jinja2==3.1.6",
   "pandas==3.0.4",
-  "plotly==6.8.0",
+  "plotly==6.9.0",
   "sse-starlette==3.4.5",
   "uvicorn==0.51.0",
 ]
