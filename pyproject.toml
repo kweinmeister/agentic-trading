@@ -3,7 +3,7 @@ name = "agentic-trading"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-  "a2a-sdk==1.1.0",
+  "a2a-sdk==1.1.1",
   "fastapi[standard]==0.139.0",
   "google-adk==2.4.0",
   "httpx==0.28.1",
