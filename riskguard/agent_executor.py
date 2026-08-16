@@ -99,9 +99,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
                         user_id="a2a_user",
                         session_id=session_id_for_adk,
                     )
-                except Exception as e_get:
+                except Exception:
                     logger.exception(
-                        f"Task {context.task_id}: Exception during ADK session get_session for session_id '{session_id_for_adk}': {e_get}",
+                        f"Task {context.task_id}: Exception during ADK session get_session for session_id '{session_id_for_adk}'",
                     )
                     session = None
 
@@ -124,9 +124,9 @@ class RiskGuardAgentExecutor(AgentExecutor):
                             logger.error(
                                 f"Task {context.task_id}: ADK InMemorySessionService.create_session returned None for session_id '{session_id_for_adk}'.",
                             )
-                    except Exception as e_create:
+                    except Exception:
                         logger.exception(
-                            f"Task {context.task_id}: Exception during ADK session create_session for session_id '{session_id_for_adk}': {e_create}",
+                            f"Task {context.task_id}: Exception during ADK session create_session for session_id '{session_id_for_adk}'",
                         )
                         session = None
                 else:
@@ -180,7 +180,7 @@ class RiskGuardAgentExecutor(AgentExecutor):
         except Exception as e:
             from pydantic import ValidationError
 
-            logger.error(f"Error during RiskGuard execution: {e}", exc_info=True)
+            logger.exception("Error during RiskGuard execution")
             if isinstance(e, ValidationError):
                 error_text = "Input validation failed."
             elif isinstance(
@@ -199,8 +199,8 @@ class RiskGuardAgentExecutor(AgentExecutor):
             try:
                 error_msg = updater.new_agent_message(parts=[Part(text=error_text)])
                 await updater.failed(message=error_msg)
-            except Exception as e_inner:
-                logger.exception(f"Failed to publish failure update: {e_inner}")
+            except Exception:
+                logger.exception("Failed to publish failure update")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Cancel the agent execution."""

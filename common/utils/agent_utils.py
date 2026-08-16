@@ -67,13 +67,13 @@ def parse_and_validate_input(
             f"[{agent_name} ({invocation_id_short})] Validated input: {validated_input.model_dump_json(indent=2)}",
         )
         return validated_input
-    except ValidationError as e:
+    except ValidationError:
         logger.exception(
-            f"[{agent_name} ({invocation_id_short})] Input validation failed for data '{input_data_str}': {e}",
+            f"[{agent_name} ({invocation_id_short})] Input validation failed for data '{input_data_str}'",
         )
         return None
-    except Exception as e:
+    except Exception:
         logger.exception(
-            f"[{agent_name} ({invocation_id_short})] An unexpected error occurred during parsing: {e}",
+            f"[{agent_name} ({invocation_id_short})] An unexpected error occurred during parsing",
         )
         return None

@@ -188,14 +188,12 @@ def test_check_trade_risk_logic_scenarios(
     expected_reason: str,
 ) -> None:
     """Test check_trade_risk_logic with various parameterized scenarios."""
-    trade_proposal = TradeProposal(
-        action=action if action in ("BUY", "SELL") else "BUY",
+    trade_proposal = TradeProposal.model_construct(
+        action=action,
         ticker="TECH",
         quantity=quantity,
         price=price,
     )
-    if action == "HOLD":
-        setattr(trade_proposal, "action", "HOLD")
 
     portfolio_state = PortfolioState(cash=cash, shares=shares, total_value=total_value)
 

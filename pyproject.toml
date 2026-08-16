@@ -24,6 +24,9 @@ dev = [
   "ty==0.0.61",
 ]
 
+[tool.ruff.lint]
+ignore = ["BLE001", "N999"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"

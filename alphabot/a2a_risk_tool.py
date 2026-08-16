@@ -333,21 +333,18 @@ class A2ARiskCheckTool(BaseTool):
                         break
 
         except A2AClientTimeoutError as e:
-            logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK Timeout error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
-                exc_info=True,
+            logger.exception(
+                f"[{self.name} Tool ({invocation_id_short})] A2A SDK Timeout error connecting to/from RiskGuard ({risk_guard_target_url})"
             )
             final_result_dict["reason"] = f"Timeout Error: {e}"
         except A2AClientError as e:
-            logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A SDK error connecting to/from RiskGuard ({risk_guard_target_url}): {e}",
-                exc_info=True,
+            logger.exception(
+                f"[{self.name} Tool ({invocation_id_short})] A2A SDK error connecting to/from RiskGuard ({risk_guard_target_url})"
             )
             final_result_dict["reason"] = f"A2A SDK Error: {e}. Is RiskGuard running?"
-        except ValidationError as e:
-            logger.error(
-                f"[{self.name} Tool ({invocation_id_short})] A2A Response Validation Error: {e}",
-                exc_info=True,
+        except ValidationError:
+            logger.exception(
+                f"[{self.name} Tool ({invocation_id_short})] A2A Response Validation Error"
             )
             final_result_dict["reason"] = (
                 "A2A protocol error: Invalid response structure."

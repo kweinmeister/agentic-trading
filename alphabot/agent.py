@@ -511,10 +511,9 @@ class AlphaBotAgent(BaseAgent):
                 risk_params_for_tool,
                 ctx,
             )
-        except Exception as e:
-            logger.error(
-                f"[{self.name} ({invocation_id_short})] Error during risk check tool call: {e}",
-                exc_info=True,
+        except Exception:
+            logger.exception(
+                f"[{self.name} ({invocation_id_short})] Error during risk check tool call",
             )
             yield Event(
                 author=self.name,

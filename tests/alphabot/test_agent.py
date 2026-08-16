@@ -27,18 +27,15 @@ def _get_text(event: Event) -> str:
 
 def test_alphabot_agent_instantiation() -> None:
     """Tests basic instantiation of the AlphaBotAgent."""
-    try:
-        agent = AlphaBotAgent(stock_ticker="TEST_TICKER")
-        assert agent is not None
-        assert agent.name == "AlphaBot"
-        assert agent.ticker == "TEST_TICKER"
-        assert agent.tools is not None
-        assert len(agent.tools) == 1
-        assert isinstance(agent.tools[0], A2ARiskCheckTool)
-        default_agent = AlphaBotAgent()
-        assert default_agent.ticker == DEFAULT_TICKER
-    except Exception as e:
-        pytest.fail(f"AlphaBotAgent instantiation failed: {e}")
+    agent = AlphaBotAgent(stock_ticker="TEST_TICKER")
+    assert agent is not None
+    assert agent.name == "AlphaBot"
+    assert agent.ticker == "TEST_TICKER"
+    assert agent.tools is not None
+    assert len(agent.tools) == 1
+    assert isinstance(agent.tools[0], A2ARiskCheckTool)
+    default_agent = AlphaBotAgent()
+    assert default_agent.ticker == DEFAULT_TICKER
 
 
 @pytest.mark.asyncio
