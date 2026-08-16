@@ -154,21 +154,21 @@ class AlphaBotAgentExecutor(AgentExecutor):
             await updater.complete()
 
         except (ValidationError, ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Error during agent execution: {e}", exc_info=True)
+            logger.exception("Error during agent execution")
             try:
                 error_msg = updater.new_agent_message(parts=[Part(text=str(e))])
                 await updater.failed(message=error_msg)
-            except Exception as e_inner:
-                logger.exception(f"Failed to publish failure update: {e_inner}")
-        except Exception as e:
-            logger.exception(f"An unexpected error occurred: {e}")
+            except Exception:
+                logger.exception("Failed to publish failure update")
+        except Exception:
+            logger.exception("An unexpected error occurred")
             try:
                 error_msg = updater.new_agent_message(
                     parts=[Part(text="An unexpected server error occurred.")],
                 )
                 await updater.failed(message=error_msg)
-            except Exception as e_inner:
-                logger.exception(f"Failed to publish failure update: {e_inner}")
+            except Exception:
+                logger.exception("Failed to publish failure update")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         """Cancel the agent execution."""

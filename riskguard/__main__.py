@@ -108,16 +108,16 @@ def main(host: str, port: int, proxy_headers: bool) -> None:
                 ),
             ],
         )
-    except AttributeError as e:
+    except AttributeError:
         logger.exception(
-            f"Error accessing attributes from riskguard_adk_agent: {e}. Is riskguard/agent.py correct?",
+            "Error accessing attributes from riskguard_adk_agent. Is riskguard/agent.py correct?",
         )
         raise
 
     try:
         agent_executor = RiskGuardAgentExecutor()
-    except Exception as e:
-        logger.exception(f"Error initializing RiskGuardAgentExecutor: {e}")
+    except Exception:
+        logger.exception("Error initializing RiskGuardAgentExecutor")
         raise
 
     task_store = InMemoryTaskStore()
@@ -129,8 +129,8 @@ def main(host: str, port: int, proxy_headers: bool) -> None:
 
     try:
         app = create_app(agent_card, request_handler)
-    except Exception as e:
-        logger.exception(f"Error initializing routes and FastAPI application: {e}")
+    except Exception:
+        logger.exception("Error initializing routes and FastAPI application")
         raise
 
     # Start the Server

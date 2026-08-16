@@ -60,9 +60,8 @@ class RiskGuardAgent(BaseAgent):
                 result_dict = {"approved": result.approved, "reason": result.reason}
 
             except Exception as e:
-                logger.error(
-                    f"[{self.name} ({invocation_id_short})] Unexpected error processing input: {e}",
-                    exc_info=True,
+                logger.exception(
+                    f"[{self.name} ({invocation_id_short})] Unexpected error processing input",
                 )
                 result_dict = {
                     "approved": False,

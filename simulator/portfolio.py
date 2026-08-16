@@ -31,8 +31,8 @@ class PortfolioState:
             # Set locale temporarily if needed, or ensure it's set globally.
             # Example: locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
             return locale.currency(value, grouping=True)
-        except Exception as e:
-            # Broad exception catch for any locale or formatting issues
+        except (ValueError, locale.Error, TypeError) as e:
+            # Specific exception catch for locale or formatting issues
             logger.warning(
                 f"Locale currency formatting failed (value: {value}): {e}. Using fallback.",
             )

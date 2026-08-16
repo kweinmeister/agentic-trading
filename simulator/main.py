@@ -95,16 +95,12 @@ async def lifespan(app: FastAPI):
     logger.info("Simulator UI starting up...")
     locale_setting = "en_US.UTF-8"
     try:
-        locale.setlocale(locale.LC_ALL, locale_setting)
-        logger.info(f"Default locale set to: {locale.getlocale(locale.LC_ALL)}")
-    except locale.Error as e:
+        current_locale = locale.setlocale(locale.LC_ALL, locale_setting)
+        logger.info(f"Default locale set to: {current_locale}")
+    except (locale.Error, ValueError) as e:
         logger.warning(
             f"Could not set default locale ('{locale_setting}') at startup: {e}. "
             "Check system locale settings. Using fallback currency formatting.",
-        )
-    except Exception as e:
-        logger.warning(
-            f"Unexpected error setting locale ('{locale_setting}') at startup: {e}. Using fallback formatting.",
         )
     yield
     logger.info("Simulator UI shutting down...")
@@ -500,14 +496,14 @@ async def _call_alphabot_a2a(
                     break
 
     except A2AClientError as e:
-        sim_logger.error(f"A2A Client Error: {e}", exc_info=True)
+        sim_logger.exception("A2A Client Error")
         outcome["error"] = f"A2A Client Error: {e}"
         msg = f"AlphaBot A2A Client Error: {e}"
         raise ConnectionError(
             msg,
         ) from e
     except Exception as e:
-        sim_logger.error(f"General A2A Client/Processing Error: {e}", exc_info=True)
+        sim_logger.exception("General A2A Client/Processing Error")
         outcome["error"] = f"A2A Processing Error: {e}"
     return outcome
 
@@ -778,8 +774,12 @@ async def run_simulation_async(params: dict[str, Any]) -> dict[str, Any]:
         }
     except A2AClientError as a2a_err:
         error_msg = f"A2A Client Error: {a2a_err}. Check the AlphaBot server logs for more details."
-        logger.error(error_msg, exc_info=True)
-        sim_logger.error(error_msg, exc_info=True)
+        logger.exception(
+            "A2A Client Error. Check the AlphaBot server logs for more details."
+        )
+        sim_logger.exception(
+            "A2A Client Error. Check the AlphaBot server logs for more details."
+        )
         return {
             "success": False,
             "error": error_msg,
@@ -787,8 +787,8 @@ async def run_simulation_async(params: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception as e:  # General fallback for other unexpected errors
         error_msg = f"Unexpected Simulation Error: {e}"
-        logger.error(error_msg, exc_info=True)
-        sim_logger.error(error_msg, exc_info=True)
+        logger.exception("Unexpected Simulation Error")
+        sim_logger.exception("Unexpected Simulation Error")
         return {
             "success": False,
             "error": error_msg,
@@ -1011,14 +1011,14 @@ async def handle_run_simulation(
         )
         params_dict = sim_params.to_dict()
     except ValidationError as e:
-        logger.exception(f"Simulation parameter validation failed: {e}")
+        logger.exception("Simulation parameter validation failed")
         return _render_error_page(
             request,
             f"Invalid simulation parameters: {e}",
             form_values,
         )
     except Exception as e:  # Catch other unexpected errors during param processing
-        logger.error(f"Unexpected error processing parameters: {e}", exc_info=True)
+        logger.exception("Unexpected error processing parameters")
         return _render_error_page(
             request,
             f"Error processing parameters: {e}",
