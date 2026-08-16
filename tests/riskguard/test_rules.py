@@ -1,6 +1,5 @@
 """Tests for the RiskGuard rules."""
 
-
 import pytest
 
 from common.models import PortfolioState, TradeProposal

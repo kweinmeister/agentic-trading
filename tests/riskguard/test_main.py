@@ -32,10 +32,7 @@ def test_riskguard_main_uses_env_var_for_url() -> None:
         agent_card = kwargs.get("agent_card")
         assert agent_card is not None
         assert len(agent_card.supported_interfaces) > 0
-        assert (
-            agent_card.supported_interfaces[0].url
-            == f"{public_url}/a2a/jsonrpc"
-        )
+        assert agent_card.supported_interfaces[0].url == f"{public_url}/a2a/jsonrpc"
 
 
 def test_riskguard_main_falls_back_to_host_port() -> None:
@@ -100,8 +97,7 @@ def test_riskguard_agent_card_wiring() -> None:
         assert agent_card.default_output_modes == ["data"]
 
         bindings = [
-            interface.protocol_binding
-            for interface in agent_card.supported_interfaces
+            interface.protocol_binding for interface in agent_card.supported_interfaces
         ]
         assert "JSONRPC" in bindings
         assert "HTTP+JSON" in bindings

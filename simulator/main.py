@@ -95,8 +95,8 @@ async def lifespan(app: FastAPI):
     logger.info("Simulator UI starting up...")
     locale_setting = "en_US.UTF-8"
     try:
-        locale.setlocale(locale.LC_ALL, locale_setting)
-        logger.info(f"Default locale set to: {locale.getlocale(locale.LC_ALL)}")
+        current_locale = locale.setlocale(locale.LC_ALL, locale_setting)
+        logger.info(f"Default locale set to: {current_locale}")
     except (locale.Error, ValueError) as e:
         logger.warning(
             f"Could not set default locale ('{locale_setting}') at startup: {e}. "
@@ -774,8 +774,12 @@ async def run_simulation_async(params: dict[str, Any]) -> dict[str, Any]:
         }
     except A2AClientError as a2a_err:
         error_msg = f"A2A Client Error: {a2a_err}. Check the AlphaBot server logs for more details."
-        logger.exception("A2A Client Error. Check the AlphaBot server logs for more details.")
-        sim_logger.exception("A2A Client Error. Check the AlphaBot server logs for more details.")
+        logger.exception(
+            "A2A Client Error. Check the AlphaBot server logs for more details."
+        )
+        sim_logger.exception(
+            "A2A Client Error. Check the AlphaBot server logs for more details."
+        )
         return {
             "success": False,
             "error": error_msg,
