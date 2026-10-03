@@ -12,7 +12,7 @@ dependencies = [
   "pandas==3.0.5",
   "plotly==7.1.0",
   "sse-starlette==3.4.11",
-  "uvicorn==0.52.4",
+  "uvicorn==0.53.0",
 ]
 
 [dependency-groups]
