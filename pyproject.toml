@@ -11,7 +11,7 @@ dependencies = [
   "jinja2==3.1.6",
   "pandas==3.0.6",
   "plotly==7.1.0",
-  "sse-starlette==3.4.11",
+  "sse-starlette==3.5.0",
   "uvicorn==0.53.0",
 ]
 
