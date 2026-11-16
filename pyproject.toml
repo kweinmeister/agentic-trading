@@ -21,7 +21,7 @@ dev = [
   "pytest-asyncio==1.4.1.post1",
   "pytest-mock==3.16.0",
   "ruff==0.17.4",
-  "ty==0.0.97",
+  "ty==0.0.102",
 ]
 
 [tool.ruff.lint]
